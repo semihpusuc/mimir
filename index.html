@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07080d">
+<meta name="description" content="Mimir: überraschende Fakten statt Doomscrolling">
+<title>Mimir</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen app — header / card stage / action bar, max 460px wide, cards stacked in the stage */
+:root{
+  --bg:#07080d;
+  --surface:#0f1118;
+  --surface-2:#171a26;
+  --line:rgba(255,255,255,.08);
+  --text:#eef0f7;
+  --muted:#9097ad;
+  --accent:#3dd6f5;
+  --like:#4ade80;
+  --nope:#ff5c6c;
+  --star:#ffd166;
+  --display:'Bricolage Grotesque',ui-sans-serif,system-ui,sans-serif;
+  --body:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
+
+/* Ambient glow that takes the current card's topic colour */
+.aurora{position:fixed;inset:-20%;pointer-events:none;z-index:0;overflow:hidden}
+.aurora i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.38;background:var(--accent);transition:background .9s ease}
+.aurora i:nth-child(1){width:60vmax;height:60vmax;left:5%;top:0;animation:drift1 18s ease-in-out infinite alternate}
+.aurora i:nth-child(2){width:45vmax;height:45vmax;right:0;bottom:5%;opacity:.22;animation:drift2 22s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(12%,18%) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-18%,-10%) scale(.9)}}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.app{position:relative;z-index:2;height:100%;max-width:460px;margin:0 auto;display:grid;grid-template-rows:auto 1fr auto;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 14px)}
+
+/* Header */
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em}
+.brand img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 14px -2px var(--accent);transition:box-shadow .9s ease}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.tabs button{padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;transition:background .2s,color .2s}
+.tabs button[aria-selected="true"]{background:var(--surface-2);color:var(--text)}
+.count{font-family:var(--mono);font-size:11px;min-width:18px;padding:1px 5px;border-radius:999px;background:var(--star);color:#1a1405;text-align:center}
+.count[data-zero="true"]{background:rgba(255,255,255,.1);color:var(--muted)}
+
+/* Stage + cards */
+.stage{position:relative;min-height:0}
+.view{position:absolute;inset:0}
+.view[hidden]{display:none}
+.card{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;border-radius:28px;
+  background:linear-gradient(180deg,color-mix(in oklab,var(--c) 16%,var(--surface)) 0%,var(--surface) 46%);
+  border:1px solid color-mix(in oklab,var(--c) 22%,var(--line));
+  box-shadow:0 30px 80px -24px rgba(0,0,0,.85),0 0 60px -30px var(--c);
+  touch-action:pan-y;user-select:none;-webkit-user-select:none;will-change:transform;
+  transition:transform .45s cubic-bezier(.2,.9,.25,1),opacity .3s}
+.card.under{transform:scale(.94) translateY(14px);opacity:.55;pointer-events:none}
+.card.dragging{transition:none}
+.visual{flex:0 0 40%;min-height:150px;position:relative;color:var(--c);
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:24px 24px;background-position:center;
+  -webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 70%,transparent)}
+.visual svg{position:absolute;inset:0;width:100%;height:100%}
+.content{flex:1;overflow-y:auto;padding:4px 22px 22px;display:flex;flex-direction:column;gap:14px;overscroll-behavior:contain}
+.chip{align-self:flex-start;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--c);
+  padding:5px 10px;border-radius:999px;background:color-mix(in oklab,var(--c) 14%,transparent);border:1px solid color-mix(in oklab,var(--c) 30%,transparent)}
+.hook{font-family:var(--display);font-weight:700;font-size:clamp(22px,6vw,27px);line-height:1.12;letter-spacing:-.015em;margin:0;text-wrap:balance}
+.body{margin:0;font-size:15.5px;line-height:1.55;color:#c4c9d9}
+.ice{border-left:2px solid var(--c);padding:10px 14px;border-radius:0 14px 14px 0;background:rgba(255,255,255,.035)}
+.ice small{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.ice p{margin:0;font-size:15px;line-height:1.45;font-style:italic}
+.src{font-size:12.5px;color:var(--muted)}
+.src a{color:var(--muted);text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px}
+.stamp{position:absolute;top:22px;z-index:3;font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.04em;padding:2px 14px;border:3px solid;border-radius:12px;opacity:0;pointer-events:none}
+.stamp.like{left:20px;color:var(--like);transform:rotate(-12deg)}
+.stamp.nope{right:20px;color:var(--nope);transform:rotate(12deg)}
+.savedmark{position:absolute;top:16px;right:16px;z-index:2;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(0,0,0,.45);border:1px solid rgba(255,209,102,.5);color:var(--star);transform:scale(0);transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.card.saved .savedmark{transform:scale(1)}
+.savedmark svg{width:17px;height:17px}
+
+/* End-of-deck card */
+.endcard{position:absolute;inset:0;border-radius:28px;border:1px dashed rgba(255,255,255,.16);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px;background:rgba(15,17,24,.6)}
+.endcard h2{font-family:var(--display);font-size:26px;margin:0;text-wrap:balance}
+.endcard p{margin:0;color:var(--muted);line-height:1.5;max-width:30ch}
+.pill-btn{padding:12px 20px;border-radius:999px;background:var(--text);color:var(--bg);font-weight:600}
+
+/* Action bar */
+.actions{display:flex;align-items:center;justify-content:center;gap:22px;padding-top:16px}
+.act{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 10px 30px -10px rgba(0,0,0,.8);transition:transform .15s,border-color .2s,background .2s}
+.act:active{transform:scale(.9)}
+.act svg{width:26px;height:26px}
+.act.nope{color:var(--nope)} .act.nope:hover{border-color:var(--nope)}
+.act.like{color:var(--like)} .act.like:hover{border-color:var(--like)}
+.act.star{width:50px;height:50px;color:var(--star)}
+.act.star svg{width:22px;height:22px}
+.act.star[aria-pressed="true"]{background:var(--star);color:#1a1405;border-color:var(--star)}
+.actions[hidden]{display:none}
+.hint{text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--muted);padding-top:10px;text-transform:uppercase}
+.sync{display:inline-flex;align-items:center;gap:6px}
+.sync i{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.sync[data-state="cloud"] i{background:var(--like);box-shadow:0 0 6px var(--like)}
+.sync[data-state="local"] i{background:var(--star)}
+
+/* Saved list */
+.list{position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:12px}
+.list h2{font-family:var(--display);font-size:22px;margin:4px 2px 2px}
+.list .lead{margin:0 2px 6px;color:var(--muted);font-size:14px}
+.item{position:relative;border-radius:20px;padding:16px 16px 16px 18px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+.item h3{margin:0;font-family:var(--display);font-size:17px;line-height:1.25;font-weight:700;padding-right:40px}
+.item p{margin:0;font-size:14.5px;line-height:1.45;color:#c4c9d9;font-style:italic}
+.item .unsave{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--star)}
+.item .unsave svg{width:18px;height:18px}
+.export{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:20px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.16)}
+.export strong{display:block;font-family:var(--display);font-size:17px;margin-bottom:4px}
+.export span{font-size:14px;line-height:1.45;color:var(--muted)}
+.export .pill-btn{align-self:flex-start}
+.export textarea{width:100%;height:120px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:12px;font-family:var(--mono);font-size:11px;padding:10px}
+.empty{margin:auto;text-align:center;color:var(--muted);max-width:28ch;line-height:1.5}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 110px);transform:translate(-50%,20px);opacity:0;z-index:10;
+  padding:10px 16px;border-radius:999px;background:rgba(23,26,38,.95);border:1px solid var(--line);font-size:13.5px;font-weight:500;transition:opacity .25s,transform .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* SVG helpers */
+.blink{animation:blink 1.2s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.pulse{transform-origin:center;transform-box:fill-box;animation:pulse 2.2s ease-out infinite}
+@keyframes pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+.seat{animation:seat 8.4s infinite;fill:transparent}
+@keyframes seat{0%,12%{fill:currentColor}14%,100%{fill:transparent}}
+.orbit{transform-origin:180px 110px;animation:spin 40s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (prefers-reduced-motion:reduce){
+  .aurora i,.blink,.pulse,.seat,.orbit{animation:none}
+  .card{transition:opacity .2s}
+}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <img src="icons/icon-64.png" alt="" width="30" height="30">
+      Mimir
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-feed" aria-selected="true" aria-controls="view-feed">Entdecken</button>
+      <button role="tab" id="tab-saved" aria-selected="false" aria-controls="view-saved">Gemerkt <span class="count" id="savedCount">0</span></button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="view" id="view-feed" role="tabpanel" aria-labelledby="tab-feed"></section>
+    <section class="view" id="view-saved" role="tabpanel" aria-labelledby="tab-saved" hidden><div class="list" id="savedList"></div></section>
+  </main>
+
+  <footer>
+    <div class="actions" id="actions">
+      <button class="act nope" id="btnNope" aria-label="Gefällt mir nicht">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <button class="act star" id="btnStar" aria-pressed="false" aria-label="Als Icebreaker merken">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z"/></svg>
+      </button>
+      <button class="act like" id="btnLike" aria-label="Gefällt mir">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.2 5.3 3.1 1.7-1.9 3.1-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>
+      </button>
+    </div>
+    <div class="hint"><span id="hintText">← Nö · ★ Merken · Gut →</span> · <span class="sync" id="sync" data-state="pending"><i></i><span id="syncText">Lokal</span></span></div>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const TOPICS = {
+  "Technik":   "#3dd6f5",
+  "AI":        "#a78bfa",
+  "Politik":   "#ff7a6b",
+  "Geschichte":"#f5b84d",
+  "Sci-Fi":    "#f472d0",
+  "Basketball":"#ff8a3d",
+  "Geld":      "#7ee081",
+  "Invest":    "#2dd4bf"
+};
+
+/* ---------- Illustrations (360 × 220, drawn in the card's topic colour) ---------- */
+const T = (x,y,s,o={}) => `<text x="${x}" y="${y}" font-family="var(--mono)" font-size="${o.size||11}" fill="${o.fill||'#9097ad'}" text-anchor="${o.anchor||'middle'}" ${o.weight?`font-weight="${o.weight}"`:''} ${o.family?`style="font-family:${o.family}"`:''}>${s}</text>`;
+
+const ART = {
+  coffee(){
+    let lines=''; for(let y=34;y<170;y+=6) lines+=`<line x1="112" y1="${y}" x2="248" y2="${y}" stroke="currentColor" opacity=".07"/>`;
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <rect x="110" y="30" width="140" height="142" rx="8" fill="rgba(0,0,0,.35)" stroke="currentColor" stroke-opacity=".35"/>
+      ${lines}
+      <path d="M104 44V24h20M256 44V24h-20M104 158v20h20M256 158v20h-20" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="126" cy="46" r="4" fill="#ff5c6c" class="blink"/>${T(146,49,'REC',{size:9,fill:'#ff5c6c',anchor:'start'})}
+      <rect x="150" y="60" width="60" height="10" rx="3" fill="currentColor" opacity=".8"/>
+      <path d="M216 82q22 0 20 26-2 22-22 24" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="M146 120h68l4 30q0 8-8 8h-60q-8 0-8-8z" fill="currentColor" opacity=".35"/>
+      <path d="M152 70h56l10 80q0 8-8 8h-60q-8 0-8-8z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+      ${T(180,200,'128 × 128 px · Cambridge 1991')}
+    </svg>`;
+  },
+  bluetooth(){
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".7">
+        <path d="M70 50v120M45 85l50 50M95 85l-50 50"/>
+        <path d="M150 50v120M150 50l35 30-35 30 35 30-35 30"/>
+      </g>
+      ${T(110,116,'+',{size:26,fill:'#eef0f7'})}
+      ${T(222,116,'=',{size:26,fill:'#eef0f7'})}
+      <path d="M255 80l60 60-30 30V50l30 30-60 60" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 10px currentColor)"/>
+      ${T(70,200,'Rune H')}${T(160,200,'Rune B')}${T(285,200,'Bluetooth')}
+    </svg>`;
+  },
+  eliza(){
+    const rows=[['> Männer sind alle gleich.','#eef0f7'],['IN WELCHER WEISE?','c'],['> Sie nerven uns ständig.','#eef0f7'],['KANNST DU EIN BEISPIEL NENNEN?','c'],['> Mein Freund hat mich hergeschickt.','#eef0f7'],['DEIN FREUND HAT DICH HERGESCHICKT?','c']];
+    const txt=rows.map((r,i)=>`<text x="56" y="${70+i*20}" font-family="var(--mono)" font-size="10.5" fill="${r[1]==='c'?'currentColor':r[1]}">${r[0]}</text>`).join('');
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <rect x="40" y="22" width="280" height="186" rx="12" fill="rgba(0,0,0,.4)" stroke="rgba(255,255,255,.12)"/>
+      <circle cx="58" cy="38" r="4" fill="#ff5c6c" opacity=".7"/><circle cx="72" cy="38" r="4" fill="#ffd166" opacity=".7"/><circle cx="86" cy="38" r="4" fill="#4ade80" opacity=".7"/>
+      ${T(304,41,'MIT · 1966',{size:9.5,anchor:'end'})}
+      ${txt}
+      <rect x="56" y="186" width="8" height="12" fill="currentColor" class="blink"/>
+    </svg>`;
+  },
+  move37(){
+    let g=''; for(let i=0;i<9;i++){g+=`<line x1="${100+i*20}" y1="30" x2="${100+i*20}" y2="190" stroke="#eef0f7" stroke-opacity=".18"/><line x1="100" y1="${30+i*20}" x2="260" y2="${30+i*20}" stroke="#eef0f7" stroke-opacity=".18"/>`;}
+    const B=[[2,2],[3,5],[6,6],[2,4],[4,6]], W=[[2,6],[6,2],[7,3],[6,4],[3,3]];
+    const st=(a,f,s)=>a.map(([i,j])=>`<circle cx="${100+i*20}" cy="${30+j*20}" r="8.5" fill="${f}" stroke="${s}"/>`).join('');
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <rect x="88" y="18" width="184" height="184" rx="6" fill="currentColor" fill-opacity=".06"/>
+      ${g}${st(B,'#151722','rgba(255,255,255,.35)')}${st(W,'#e9ecf5','none')}
+      <circle cx="200" cy="90" r="9" fill="none" stroke="currentColor" stroke-width="2" class="pulse"/>
+      <circle cx="200" cy="90" r="8.5" fill="#151722" stroke="currentColor" stroke-width="2.5"/>
+      ${T(200,94,'37',{size:8,fill:'currentColor',weight:700})}
+      ${T(46,104,'Zug',{size:10})}<text x="46" y="140" text-anchor="middle" font-family="var(--display)" font-weight="800" font-size="38" fill="currentColor">37</text>
+      ${T(314,104,'Chance',{size:10})}<text x="314" y="128" text-anchor="middle" font-family="var(--display)" font-weight="800" font-size="18" fill="#eef0f7">1 :</text><text x="314" y="148" text-anchor="middle" font-family="var(--display)" font-weight="800" font-size="18" fill="#eef0f7">10.000</text>
+      ${T(180,214,'schematisch · Seoul 2016',{size:9.5})}
+    </svg>`;
+  },
+  swiss(){
+    let seats=''; for(let k=0;k<7;k++){const a=Math.PI*(1-k/6);const x=180+112*Math.cos(a),y=146-112*Math.sin(a);
+      seats+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="17" class="seat" style="animation-delay:${k*1.2}s" stroke="currentColor" stroke-width="2.5"/>`;}
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <path d="M68 146a112 112 0 0 1 224 0" fill="none" stroke="currentColor" stroke-opacity=".18" stroke-dasharray="3 6"/>
+      ${seats}
+      <rect x="162" y="96" width="36" height="36" rx="5" fill="#e3263b"/><path d="M176 103h8v8h8v8h-8v8h-8v-8h-8v-8h8z" fill="#fff"/>
+      ${T(180,188,'7 gleichberechtigte Mitglieder',{size:10.5,fill:'#eef0f7'})}
+      ${T(180,206,'Vorsitz rotiert jährlich')}
+    </svg>`;
+  },
+  cleo(){
+    const X=y=>30+(y+2600)*0.0652, p=X(-2560), c=X(-30), m=X(1969);
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <line x1="20" y1="120" x2="340" y2="120" stroke="#eef0f7" stroke-opacity=".25" stroke-width="2"/>
+      <path d="M${p} 120l-15 0 15-34 15 34z" fill="#f5b84d" opacity=".85" transform="translate(12 0)"/>
+      <circle cx="${c}" cy="104" r="11" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="${c}" cy="104" r="3.5" fill="currentColor"/>
+      <path d="M${m-4} 92a13 13 0 1 0 0 24a10 10 0 1 1 0-24z" fill="#eef0f7"/>
+      ${[p+12,c,m-6].map(x=>`<circle cx="${x}" cy="120" r="4" fill="#eef0f7"/>`).join('')}
+      ${T(p+2,72,'Pyramide',{anchor:'start',fill:'#eef0f7'})}${T(p+2,58,'2560 v. Chr.',{anchor:'start',size:10})}
+      ${T(c,72,'Kleopatra',{fill:'#eef0f7'})}${T(c,58,'† 30 v. Chr.',{size:10})}
+      ${T(m+2,72,'Mond',{anchor:'end',fill:'#eef0f7'})}${T(m+2,58,'1969',{anchor:'end',size:10})}
+      <path d="M${p+12} 140v8h${c-p-14}v-8" fill="none" stroke="#9097ad" stroke-width="1.5"/>
+      <path d="M${c+2} 140v8h${m-c-8}v-8" fill="none" stroke="currentColor" stroke-width="2"/>
+      ${T((p+c)/2+6,172,'≈ 2.530 Jahre',{size:12})}
+      ${T((c+m)/2-2,172,'≈ 2.000 Jahre',{size:12,fill:'currentColor',weight:700})}
+      ${T(180,206,'maßstabsgetreu',{size:9.5})}
+    </svg>`;
+  },
+  robot(){
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <line x1="180" y1="16" x2="180" y2="30" stroke="currentColor" stroke-width="3"/><circle cx="180" cy="14" r="4" fill="currentColor" class="blink"/>
+      <rect x="150" y="30" width="60" height="50" rx="12" fill="rgba(0,0,0,.35)" stroke="currentColor" stroke-width="3"/>
+      <circle cx="167" cy="52" r="5" fill="currentColor"/><circle cx="193" cy="52" r="5" fill="currentColor"/>
+      <path d="M168 68h24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <text x="180" y="142" text-anchor="middle" font-family="var(--display)" font-weight="800" font-size="50" letter-spacing="-1" fill="#eef0f7">robota</text>
+      ${T(180,172,'tschechisch: Fronarbeit',{size:11.5,fill:'currentColor'})}
+      ${T(180,200,'R.U.R. · Prag 1920')}
+    </svg>`;
+  },
+  clarke(){
+    const sat=a=>{const r=88,x=180+r*Math.cos(a),y=110+r*Math.sin(a);return {x,y};};
+    const s=[-Math.PI/2,Math.PI/6,5*Math.PI/6].map(sat);
+    const sats=s.map(p=>`<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})"><rect x="-4" y="-4" width="8" height="8" fill="#eef0f7"/><rect x="-16" y="-2" width="10" height="4" fill="currentColor"/><rect x="6" y="-2" width="10" height="4" fill="currentColor"/></g>`).join('');
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <circle cx="180" cy="110" r="88" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-dasharray="4 6"/>
+      <circle cx="180" cy="110" r="36" fill="#0f1a2e" stroke="#3dd6f5" stroke-opacity=".6" stroke-width="1.5"/>
+      <path d="M160 96q10-8 18 0t16 2M152 116q14-6 24 2t22-2" fill="none" stroke="#3dd6f5" stroke-opacity=".5" stroke-width="1.5"/>
+      <g class="orbit"><path d="M${s[0].x} ${s[0].y}L${s[1].x} ${s[1].y}L${s[2].x} ${s[2].y}Z" fill="currentColor" fill-opacity=".05" stroke="currentColor" stroke-opacity=".25"/>${sats}</g>
+      ${T(26,32,'1945',{anchor:'start',size:13,fill:'#eef0f7',weight:700})}
+      ${T(334,32,'35.786 km',{anchor:'end',size:11,fill:'currentColor'})}
+      ${T(334,206,'3 Satelliten = fast die ganze Erde',{anchor:'end',size:9.5})}
+    </svg>`;
+  },
+  naismith(){
+    const k=3.6;
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      ${T(30,44,'KANSAS · 1898–1907',{anchor:'start',size:10.5})}
+      ${T(30,84,'Siege',{anchor:'start',fill:'#eef0f7'})}
+      <rect x="110" y="68" width="${55*k}" height="26" rx="6" fill="currentColor"/>
+      ${T(110+55*k-10,86,'55',{anchor:'end',fill:'#1a0e05',weight:700,size:13})}
+      ${T(30,134,'Niederl.',{anchor:'start',fill:'#eef0f7'})}
+      <rect x="110" y="118" width="${60*k}" height="26" rx="6" fill="#ff5c6c" fill-opacity=".75"/>
+      ${T(110+60*k-10,136,'60',{anchor:'end',fill:'#1a0507',weight:700,size:13})}
+      ${T(30,186,'Siegquote 47,8 % · einziger Kansas-Coach unter 50 %',{anchor:'start',size:10})}
+    </svg>`;
+  },
+  pin(){
+    const dots=(n,y,on,strike)=>Array.from({length:n},(_,i)=>{const x=150+i*30;const off=strike&&i>=4;
+      return `<circle cx="${x}" cy="${y}" r="9" fill="${on&&!off?'currentColor':'none'}" stroke="${off?'#9097ad':'currentColor'}" stroke-width="2" ${off?'opacity=".45"':''}/>`+(off?`<line x1="${x-12}" y1="${y+12}" x2="${x+12}" y2="${y-12}" stroke="#ff5c6c" stroke-width="2"/>`:'');}).join('');
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      ${T(40,89,'geplant',{anchor:'start',fill:'#eef0f7'})}${dots(6,85,false,true)}
+      ${T(40,149,'Caroline',{anchor:'start',fill:'#eef0f7'})}${dots(4,145,true,false)}
+      <path d="M130 108v14" stroke="#9097ad" stroke-dasharray="2 3"/>
+      ${T(180,200,'erster Geldautomat · London 1967')}
+    </svg>`;
+  },
+  buffett(){
+    const total=84.5, w=300, before=3/total*w;
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <defs><linearGradient id="bg-buff" x1="0" x2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".55"/><stop offset="1" stop-color="currentColor"/></linearGradient></defs>
+      <text x="330" y="70" text-anchor="end" font-family="var(--display)" font-weight="800" font-size="46" fill="#eef0f7">96 %</text>
+      ${T(330,90,'nach dem 65. Geburtstag',{anchor:'end',size:10.5,fill:'currentColor'})}
+      <rect x="30" y="108" width="${before.toFixed(1)}" height="40" rx="4" fill="#9097ad"/>
+      <rect x="${(30+before+2).toFixed(1)}" y="108" width="${(w-before-2).toFixed(1)}" height="40" rx="4" fill="url(#bg-buff)"/>
+      ${T(318,133,'81,5 Mrd. $',{anchor:'end',fill:'#04201b',weight:700,size:12})}
+      <path d="M${30+before/2} 152v18" stroke="#9097ad"/>
+      ${T(30,184,'vor 65: 3,0 Mrd. $',{anchor:'start',size:10.5,fill:'#eef0f7'})}
+      ${T(330,206,'laut M. Housel, 2020',{anchor:'end',size:9.5})}
+    </svg>`;
+  },
+  buttonwood(){
+    let ppl=''; for(let i=0;i<24;i++) ppl+=`<circle cx="${64+i*10}" cy="190" r="3" fill="#eef0f7" opacity=".85"/>`;
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <rect x="172" y="104" width="16" height="76" rx="3" fill="#8a6a4a"/>
+      <path d="M180 140l-22-18M180 128l20-16" stroke="#8a6a4a" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="148" cy="92" r="38" fill="currentColor" opacity=".35"/><circle cx="212" cy="88" r="40" fill="currentColor" opacity=".45"/>
+      <circle cx="180" cy="58" r="40" fill="currentColor" opacity=".6"/><circle cx="128" cy="116" r="24" fill="currentColor" opacity=".25"/><circle cx="234" cy="116" r="24" fill="currentColor" opacity=".3"/>
+      <line x1="40" y1="180" x2="320" y2="180" stroke="#eef0f7" stroke-opacity=".25"/>
+      ${ppl}
+      ${T(180,212,'17. Mai 1792 · 24 Händler · Wall Street 68',{size:10})}
+    </svg>`;
+  }
+};
+
+/* ---------- Facts (prototype pack, checked against the linked sources) ---------- */
+const FACTS = [
+ {id:"tech-001",topic:"Technik",art:"coffee",
+  hook:"Die erste Webcam der Welt hat eine Kaffeekanne beobachtet.",
+  body:"1991 richteten Forscher der Uni Cambridge eine Kamera auf die Kaffeemaschine im Flur, damit niemand mehr umsonst zur leeren Kanne lief. Das Bild: 128 × 128 Pixel, schwarz-weiß. 1993 kam es ins Web. Die Kanne steht heute als Leihgabe im Heinz Nixdorf MuseumsForum in Paderborn.",
+  ice:"Weißt du, was die allererste Webcam gefilmt hat? Eine Kaffeekanne. Und die steht heute in Paderborn.",
+  src:["Wikipedia: Trojan Room coffee pot","https://en.wikipedia.org/wiki/Trojan_Room_coffee_pot"]},
+ {id:"tech-002",topic:"Technik",art:"bluetooth",
+  hook:"Bluetooth ist nach einem Wikingerkönig benannt.",
+  body:"Harald Blauzahn einte im 10. Jahrhundert Dänemark und Teile Norwegens, so wie die Funktechnik Geräte verschiedener Hersteller verbinden sollte. Das Logo verschmilzt seine Initialen in Runen: ᚼ für H und ᛒ für B.",
+  ice:"Das Bluetooth-Logo sind eigentlich die Initialen eines Wikingerkönigs.",
+  src:["Wikipedia: Bluetooth","https://de.wikipedia.org/wiki/Bluetooth"]},
+ {id:"ai-001",topic:"AI",art:"eliza",
+  hook:"Der erste Chatbot war so überzeugend, dass die Sekretärin seines Erfinders ihn aus dem Raum schickte.",
+  body:"Joseph Weizenbaum baute ELIZA Mitte der 1960er am MIT. Das Programm spiegelte Aussagen einfach als Fragen zurück. Seine Sekretärin wusste, dass es nur eine Maschine war, wollte aber nach wenigen Sätzen allein mit ihr sprechen. Weizenbaum wurde danach einer der schärfsten Kritiker künstlicher Intelligenz.",
+  ice:"Schon 1966 wollten Menschen mit einem Chatbot lieber allein sein, obwohl er nur ein paar Hundert Zeilen Code war.",
+  src:["IEEE Spectrum","https://spectrum.ieee.org/why-people-demanded-privacy-to-confide-in-the-worlds-first-chatbot"]},
+ {id:"ai-002",topic:"AI",art:"move37",
+  hook:"AlphaGos berühmtester Zug hatte eine Chance von 1 zu 10.000.",
+  body:"Im März 2016 spielte die KI gegen Go-Weltklassespieler Lee Sedol in Partie 2 den Zug 37. Kommentatoren hielten ihn zuerst für einen Fehler, doch er entschied die Partie. Zwei Partien später antwortete Lee Sedol mit einem ebenso unwahrscheinlichen Zug 78 und gewann.",
+  ice:"Der Moment, in dem Profis dachten, eine KI sei kreativ, war ein Zug, den kein Mensch gespielt hätte.",
+  src:["Google DeepMind: AlphaGo","https://deepmind.google/research/breakthroughs/alphago/"]},
+ {id:"pol-001",topic:"Politik",art:"swiss",
+  hook:"Die Schweiz hat keinen Regierungschef, sondern sieben.",
+  body:"Der Bundesrat regiert als Kollegium aus sieben gleichberechtigten Mitgliedern. Das Amt des Bundespräsidenten wechselt jedes Jahr. Er leitet die Sitzungen und vertritt das Land, hat aber keine zusätzliche Macht gegenüber den anderen sechs.",
+  ice:"In der Schweiz ist Präsident ein Jahresjob, und man hat dabei nicht mal mehr zu sagen als die Kollegen.",
+  src:["Wikipedia: Bundespräsident (Schweiz)","https://de.wikipedia.org/wiki/Bundespr%C3%A4sident_(Schweiz)"]},
+ {id:"hist-001",topic:"Geschichte",art:"cleo",
+  hook:"Kleopatra lebte näher an der Mondlandung als am Bau der Cheops-Pyramide.",
+  body:"Die Cheops-Pyramide entstand um 2560 v. Chr. Kleopatra starb 30 v. Chr., gut 2.500 Jahre später. Von ihrem Tod bis zur Mondlandung 1969 vergingen dagegen nur knapp 2.000 Jahre. Für Kleopatra waren die Pyramiden schon uralte Ruinen.",
+  ice:"Für Kleopatra waren die Pyramiden älter als sie für uns ist.",
+  src:["Wikipedia: Kleopatra VII.","https://de.wikipedia.org/wiki/Kleopatra_VII."]},
+ {id:"scifi-001",topic:"Sci-Fi",art:"robot",
+  hook:"Das Wort „Roboter“ stammt aus einem Theaterstück von 1920.",
+  body:"Karel Čapek schrieb „R.U.R.“ (Rossums Universal-Roboter). Den Begriff schlug ihm sein Bruder Josef vor, abgeleitet vom tschechischen „robota“ für Fronarbeit. Čapeks Roboter waren übrigens keine Maschinen aus Metall, sondern künstlich hergestellte Menschen.",
+  ice:"Die ersten Roboter der Geschichte waren gar nicht aus Metall, sondern biologisch.",
+  src:["Wikipedia: R.U.R.","https://de.wikipedia.org/wiki/R.U.R."]},
+ {id:"scifi-002",topic:"Sci-Fi",art:"clarke",
+  hook:"Ein Science-Fiction-Autor beschrieb Kommunikationssatelliten 12 Jahre vor dem ersten Satelliten.",
+  body:"1945 schlug Arthur C. Clarke im Magazin „Wireless World“ vor, drei Satelliten in 35.786 km Höhe zu platzieren. Dort kreisen sie genau so schnell, wie sich die Erde dreht, und decken fast den ganzen Planeten ab. Sputnik startete erst 1957. Die geostationäre Bahn heißt bis heute auch Clarke-Orbit.",
+  ice:"Satelliten-TV verdanken wir einem Sci-Fi-Autor, der die Idee 12 Jahre vor Sputnik aufgeschrieben hat.",
+  src:["Wikipedia: Geostationärer Satellit","https://de.wikipedia.org/wiki/Geostation%C3%A4rer_Satellit"]},
+ {id:"bball-001",topic:"Basketball",art:"naismith",
+  hook:"Der Erfinder des Basketballs ist der einzige Trainer in Kansas mit negativer Bilanz.",
+  body:"James Naismith erfand das Spiel 1891, ursprünglich mit Pfirsichkörben. Ab 1898 trainierte er die University of Kansas, heute eines der erfolgreichsten College-Programme, und kam auf 55 Siege bei 60 Niederlagen. Seine Haltung: Basketball könne man nicht coachen, man spiele es einfach.",
+  ice:"Der Typ, der Basketball erfunden hat, war als Trainer der schlechteste in der Geschichte seiner Uni.",
+  src:["Kansas Public Radio","https://kansaspublicradio.org/kansas-trivia-blog/2014-01-10/sports-january-10-2014"]},
+ {id:"geld-001",topic:"Geld",art:"pin",
+  hook:"Deine PIN hat vier Stellen, weil sich die Frau des Erfinders keine sechs merken konnte.",
+  body:"John Shepherd-Barron, Erfinder des ersten Geldautomaten (London, 1967), wollte sechsstellige Codes wie seine alte Armeenummer. Seine Frau Caroline sagte ihm am Küchentisch, sie könne sich nur vier Ziffern merken. Daraus wurde der weltweite Standard. Die Schweiz vergibt übrigens standardmäßig sechsstellige PINs.",
+  ice:"Weißt du, warum deine PIN vier Stellen hat? Wegen eines Gesprächs am Küchentisch.",
+  src:["Wikipedia: Personal identification number","https://en.wikipedia.org/wiki/Personal_identification_number"]},
+ {id:"inv-001",topic:"Invest",art:"buffett",
+  hook:"Rund 96 % von Warren Buffetts Vermögen entstanden nach seinem 65. Geburtstag.",
+  body:"Morgan Housel rechnete 2020 in „The Psychology of Money“ vor: 81,5 von 84,5 Milliarden Dollar kamen erst nach dem Rentenalter. Buffett ist ein großartiger Investor, doch sein eigentlicher Hebel ist Zeit. Er investiert, seit er 10 ist, und hat nie aufgehört.",
+  ice:"Hätte Buffett mit 65 aufgehört, würde heute kaum jemand seinen Namen kennen.",
+  src:["The Psychology of Money (Zusammenfassung)","https://grahammann.net/book-notes/the-psychology-of-money-morgan-housel"]},
+ {id:"inv-002",topic:"Invest",art:"buttonwood",
+  hook:"Die New Yorker Börse wurde unter einem Baum gegründet.",
+  body:"Am 17. Mai 1792 unterschrieben 24 Händler unter einer Platane vor der Wall Street 68 das „Buttonwood Agreement“. Sie legten feste Provisionen fest und versprachen, bevorzugt untereinander zu handeln. Daraus wurde die New York Stock Exchange.",
+  ice:"Der größte Börsenplatz der Welt fing als Treffen von 24 Leuten unter einem Baum an.",
+  src:["Wikipedia: Buttonwood Agreement","https://en.wikipedia.org/wiki/Buttonwood_Agreement"]}
+];
+const byId = Object.fromEntries(FACTS.map(f=>[f.id,f]));
+
+/* ---------- Storage: everything stays in this browser on the phone ---------- */
+const LKEY="funke.votes.v1";
+let votes = {};
+try{ votes = JSON.parse(localStorage.getItem(LKEY)||"{}")||{}; }catch(e){ votes={}; }
+const syncEl=document.getElementById('sync'), syncText=document.getElementById('syncText');
+function setSync(state){ syncEl.dataset.state=state; syncText.textContent = state==='cloud'?'Dauerhaft gespeichert':'Auf diesem Gerät gespeichert'; }
+function persist(id){
+  try{ localStorage.setItem(LKEY, JSON.stringify(votes)); }catch(e){}
+}
+/* Ask the browser not to clear our data when storage runs low */
+(async()=>{ try{ const ok = navigator.storage && navigator.storage.persist && await navigator.storage.persist(); setSync(ok?'cloud':'local'); }catch(e){ setSync('local'); } })();
+
+/* Export for Claude: a compact text you paste into the chat */
+function exportText(){
+  const rows=FACTS.filter(f=>votes[f.id]).map(f=>({id:f.id,topic:f.topic,vote:votes[f.id].vote||null,saved:!!votes[f.id].saved,hook:f.hook}));
+  return JSON.stringify({app:"mimir",exportedAt:new Date().toISOString(),count:rows.length,votes:rows},null,1);
+}
+async function copyExport(){
+  const txt=exportText();
+  try{ await navigator.clipboard.writeText(txt); toast('Kopiert. Jetzt im Chat mit Claude einfügen'); }
+  catch(e){ const ta=document.getElementById('exportBox'); ta.hidden=false; ta.value=txt; ta.focus(); ta.select(); toast('Text markiert. Bitte manuell kopieren'); }
+}
+
+/* ---------- Deck ---------- */
+let deck=[], started=false, view='feed';
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function buildDeck(all){
+  const ids=FACTS.map(f=>f.id).filter(id=>all || !(votes[id]&&votes[id].vote));
+  deck=shuffle(ids);
+}
+
+const feed=document.getElementById('view-feed');
+const starIcon='<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z"/></svg>';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function cardEl(f,under){
+  const el=document.createElement('article');
+  el.className='card'+(under?' under':'')+(votes[f.id]&&votes[f.id].saved?' saved':'');
+  el.style.setProperty('--c',TOPICS[f.topic]);
+  el.dataset.id=f.id;
+  el.innerHTML=`
+    <div class="stamp like">GUT</div><div class="stamp nope">NÖ</div>
+    <div class="savedmark" aria-hidden="true">${starIcon}</div>
+    <div class="visual">${ART[f.art]()}</div>
+    <div class="content">
+      <span class="chip">${esc(f.topic)}</span>
+      <h2 class="hook">${esc(f.hook)}</h2>
+      <p class="body">${esc(f.body)}</p>
+      <div class="ice"><small>So erzählst du’s</small><p>„${esc(f.ice)}“</p></div>
+      <div class="src">Quelle: <a href="${f.src[1]}" target="_blank" rel="noopener">${esc(f.src[0])}</a></div>
+    </div>`;
+  return el;
+}
+
+function renderFeed(){
+  feed.innerHTML='';
+  const actions=document.getElementById('actions');
+  if(deck.length===0){
+    const liked=Object.values(votes).filter(v=>v.vote==='like').length;
+    feed.innerHTML=`<div class="endcard">
+      <h2>Alle Fakten dieses Pakets gesehen</h2>
+      <p>${liked} davon haben dir gefallen. Beim nächsten Paket sucht Claude Fakten aus, die deinen Bewertungen ähneln.</p>
+      <button class="pill-btn" id="reshuffle">Alle nochmal mischen</button></div>`;
+    document.getElementById('reshuffle').onclick=()=>{ buildDeck(true); renderFeed(); };
+    actions.hidden=true; setAccent('#eef0f7'); return;
+  }
+  actions.hidden=false;
+  if(deck[1]) feed.appendChild(cardEl(byId[deck[1]],true));
+  const top=cardEl(byId[deck[0]],false);
+  feed.appendChild(top);
+  attachDrag(top);
+  setAccent(TOPICS[byId[deck[0]].topic]);
+  updateStarBtn();
+}
+
+function setAccent(c){ document.documentElement.style.setProperty('--accent',c); }
+function topCard(){ return feed.querySelector('.card:not(.under)'); }
+
+function updateStarBtn(){
+  const b=document.getElementById('btnStar'); const id=deck[0];
+  b.setAttribute('aria-pressed', !!(id&&votes[id]&&votes[id].saved));
+}
+
+/* ---------- Actions ---------- */
+let busy=false;
+function vote(dir){
+  if(busy||!deck.length) return;
+  const card=topCard(); if(!card) return;
+  busy=true;
+  const id=deck[0];
+  votes[id]={...(votes[id]||{}), vote: dir>0?'like':'nope'};
+  persist(id);
+  buzz(dir>0?18:10);
+  card.classList.remove('dragging');
+  card.style.transform=`translate(${dir*140}%, ${card._dy||0}px) rotate(${dir*24}deg)`;
+  card.style.opacity='0';
+  card.querySelector(dir>0?'.stamp.like':'.stamp.nope').style.opacity=1;
+  const next=feed.querySelector('.card.under'); if(next) next.classList.remove('under');
+  setTimeout(()=>{ deck.shift(); busy=false; renderFeed(); renderSavedCount(); }, 320);
+}
+
+function toggleSave(){
+  const id=deck[0]; if(!id) return;
+  const now=!(votes[id]&&votes[id].saved);
+  votes[id]={...(votes[id]||{}), saved: now};
+  persist(id);
+  const card=topCard(); if(card) card.classList.toggle('saved',now);
+  updateStarBtn(); renderSavedCount(); buzz(now?[10,40,10]:8);
+  toast(now?'Als Icebreaker gemerkt':'Nicht mehr gemerkt');
+}
+
+function buzz(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+let toastT; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
+
+/* ---------- Swipe ---------- */
+function attachDrag(card){
+  let sx=0,sy=0,dx=0,dy=0,t0=0,drag=false,pid=null;
+  const like=card.querySelector('.stamp.like'), nope=card.querySelector('.stamp.nope');
+  card.addEventListener('pointerdown',e=>{
+    if(busy||e.button>0||e.target.closest('a')) return;
+    sx=e.clientX; sy=e.clientY; dx=dy=0; t0=performance.now(); drag=false; pid=e.pointerId;
+  });
+  card.addEventListener('pointermove',e=>{
+    if(pid!==e.pointerId) return;
+    dx=e.clientX-sx; dy=e.clientY-sy;
+    if(!drag){
+      if(Math.abs(dx)>10 && Math.abs(dx)>Math.abs(dy)*1.2){ drag=true; card.classList.add('dragging'); try{card.setPointerCapture(pid);}catch(_){} }
+      else return;
+    }
+    card._dy=dy*.3;
+    card.style.transform=`translate(${dx}px, ${dy*.3}px) rotate(${dx*.06}deg)`;
+    const p=Math.min(Math.abs(dx)/110,1);
+    like.style.opacity = dx>0?p:0; nope.style.opacity = dx<0?p:0;
+  });
+  const end=e=>{
+    if(pid!==e.pointerId) return; pid=null;
+    if(!drag) return; drag=false;
+    const w=card.offsetWidth, v=Math.abs(dx)/Math.max(1,performance.now()-t0);
+    if(e.type!=='pointercancel' && (Math.abs(dx)>w*.28 || (v>.6&&Math.abs(dx)>40))){ vote(dx>0?1:-1); }
+    else{ card.classList.remove('dragging'); card.style.transform=''; like.style.opacity=0; nope.style.opacity=0; }
+  };
+  card.addEventListener('pointerup',end);
+  card.addEventListener('pointercancel',end);
+}
+
+/* ---------- Saved list ---------- */
+function renderSavedCount(){
+  const n=Object.values(votes).filter(v=>v.saved).length;
+  const c=document.getElementById('savedCount'); c.textContent=n; c.dataset.zero = n===0;
+}
+const exportHtml=()=>`<div class="export"><div><strong>Neue Fakten holen</strong><span>Kopiere deine Bewertungen und füge sie im Chat mit Claude ein. Daraus entsteht das nächste Faktenpaket.</span></div>
+  <button class="pill-btn" id="btnExport">Bewertungen kopieren</button><textarea id="exportBox" hidden readonly aria-label="Bewertungen als Text"></textarea></div>`;
+function renderSaved(){
+  const list=document.getElementById('savedList');
+  const items=FACTS.filter(f=>votes[f.id]&&votes[f.id].saved);
+  if(!items.length){ list.innerHTML=exportHtml()+`<p class="empty">Noch nichts gemerkt. Tippe beim Entdecken auf den Stern, um einen Fakt als Icebreaker zu sammeln.</p>`; document.getElementById('btnExport').onclick=copyExport; return; }
+  list.innerHTML=exportHtml()+`<h2>Deine Icebreaker</h2><p class="lead">${items.length===1?"1 Fakt":items.length+" Fakten"}, bereit fürs nächste Gespräch.</p>`+
+    items.map(f=>`<div class="item" style="--c:${TOPICS[f.topic]}">
+      <span class="chip">${esc(f.topic)}</span>
+      <h3>${esc(f.hook)}</h3>
+      <p>„${esc(f.ice)}“</p>
+      <button class="unsave" data-id="${f.id}" aria-label="Nicht mehr merken">${starIcon}</button>
+    </div>`).join('');
+  document.getElementById('btnExport').onclick=copyExport;
+  list.querySelectorAll('.unsave').forEach(b=>b.onclick=()=>{ const id=b.dataset.id; votes[id]={...votes[id],saved:false}; persist(id); renderSaved(); renderSavedCount(); });
+}
+
+/* ---------- Tabs ---------- */
+function show(v){
+  view=v;
+  document.getElementById('tab-feed').setAttribute('aria-selected',v==='feed');
+  document.getElementById('tab-saved').setAttribute('aria-selected',v==='saved');
+  document.getElementById('view-feed').hidden = v!=='feed';
+  document.getElementById('view-saved').hidden = v!=='saved';
+  document.getElementById('actions').hidden = v!=='feed' || deck.length===0;
+  document.getElementById('hintText').style.visibility = v==='feed'?'visible':'hidden';
+  if(v==='saved'){ renderSaved(); setAccent(TOPICS['Invest']); } else renderFeed();
+}
+document.getElementById('tab-feed').onclick=()=>show('feed');
+document.getElementById('tab-saved').onclick=()=>show('saved');
+document.getElementById('btnLike').onclick=()=>vote(1);
+document.getElementById('btnNope').onclick=()=>vote(-1);
+document.getElementById('btnStar').onclick=toggleSave;
+document.addEventListener('keydown',e=>{
+  if(view!=='feed') return;
+  if(e.key==='ArrowRight') vote(1); else if(e.key==='ArrowLeft') vote(-1); else if(e.key==='s'||e.key==='ArrowUp') toggleSave();
+});
+
+function renderAll(){ renderSavedCount(); if(view==='feed') renderFeed(); else renderSaved(); }
+
+buildDeck(false);
+if(deck.length===0) buildDeck(true);
+started=true;
+renderAll();
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+</body>
+</html>
