@@ -187,7 +187,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.2 5.3 3.1 1.7-1.9 3.1-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>
       </button>
     </div>
-    <div class="hint"><span id="hintText">← Nö · ★ Merken · Gut →</span> · <span class="sync" id="sync" data-state="pending"><i></i><span id="syncText">Lokal</span></span></div>
+    <div class="hint"><span id="hintText">← Nö · ★ Merken · Gut →</span> · <span class="ver" id="ver"></span> · <span class="sync" id="sync" data-state="pending"><i></i><span id="syncText">Lokal</span></span></div>
   </footer>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -365,6 +365,93 @@ const ART = {
   }
 };
 
+/* ---------- Grafik-Vorlagen (v2): eine Vorlage + Daten statt Handarbeit pro Fakt ----------
+   f.art ist entweder ein Name aus ART (alte, handgezeichnete Grafiken)
+   oder ein Objekt {t:"bignum"|"timeline"|"bars"|"icon"|"duo", ...} (neue Vorlagen). */
+const ICONS = {
+  go:()=>`<rect x="14" y="14" width="72" height="72" rx="4"/><path d="M38 14v72M62 14v72M14 38h72M14 62h72" opacity=".5"/><circle cx="38" cy="38" r="9" fill="currentColor"/><circle cx="62" cy="62" r="9"/>`,
+  qr:()=>`<rect x="14" y="14" width="26" height="26"/><rect x="60" y="14" width="26" height="26"/><rect x="14" y="60" width="26" height="26"/><rect x="22" y="22" width="10" height="10" fill="currentColor"/><rect x="68" y="22" width="10" height="10" fill="currentColor"/><rect x="22" y="68" width="10" height="10" fill="currentColor"/><path d="M60 60h10v10H60zM76 76h10v10H76zM60 78h8M78 60v8" fill="currentColor"/>`,
+  crown:()=>`<path d="M16 72 12 30l24 20 14-26 14 26 24-20-4 42z"/><path d="M16 82h68"/>`,
+  hand:()=>`<path d="M30 52V28a5 5 0 0 1 10 0v20M40 46V20a5 5 0 0 1 10 0v26M50 46V24a5 5 0 0 1 10 0v26M60 50V32a5 5 0 0 1 10 0v34c0 16-10 24-22 24-14 0-20-8-26-20l-8-14a5 5 0 0 1 9-4l7 10"/>`,
+  chip:()=>`<rect x="26" y="26" width="48" height="48" rx="4"/><rect x="38" y="38" width="24" height="24" fill="currentColor" opacity=".4"/><path d="M38 14v12M50 14v12M62 14v12M38 74v12M50 74v12M62 74v12M14 38h12M14 50h12M14 62h12M74 38h12M74 50h12M74 62h12"/>`,
+  bug:()=>`<ellipse cx="50" cy="56" rx="20" ry="26"/><circle cx="50" cy="26" r="9"/><path d="M50 30v52M30 46 14 38M30 58H12M31 70 16 80M70 46l16-8M70 58h18M69 70l15 10M44 18 36 8M56 18l8-10"/>`,
+  bottle:()=>`<path d="M42 10h16v20c0 8 14 12 14 28v28a4 4 0 0 1-4 4H32a4 4 0 0 1-4-4V58c0-16 14-20 14-28z"/><path d="M28 56h44M28 72h44" opacity=".5"/>`,
+  flag:()=>`<path d="M26 90V12"/><path d="M26 14h50l-12 16 12 16H26z" fill="currentColor" opacity=".35"/><path d="M26 14h50l-12 16 12 16H26z"/>`,
+  calendar:()=>`<rect x="14" y="20" width="72" height="66" rx="6"/><path d="M14 40h72M32 12v14M68 12v14"/><path d="M28 54h8M46 54h8M64 54h8M28 70h8M46 70h8" stroke-width="5"/>`,
+  typewriter:()=>`<rect x="30" y="10" width="40" height="30" rx="2"/><path d="M38 20h24M38 28h16" opacity=".6"/><rect x="12" y="40" width="76" height="40" rx="6"/><path d="M26 54h6M40 54h6M54 54h6M68 54h6M32 66h36" stroke-width="5"/>`,
+  globe:()=>`<circle cx="50" cy="50" r="38"/><ellipse cx="50" cy="50" rx="16" ry="38"/><path d="M12 50h76M18 30h64M18 70h64" opacity=".6"/>`,
+  sushi:()=>`<rect x="16" y="40" width="68" height="36" rx="16"/><path d="M16 56h68" opacity=".4"/><path d="M30 40c0-14 40-14 40 0" fill="currentColor" opacity=".4"/><path d="M30 40c0-14 40-14 40 0"/>`,
+  dog:()=>`<path d="M26 30 14 52l16 8M74 30l12 22-16 8"/><path d="M26 30c8-10 40-10 48 0 6 14 4 36-6 46-8 8-28 8-36 0-10-10-12-32-6-46z"/><circle cx="38" cy="48" r="4" fill="currentColor"/><circle cx="62" cy="48" r="4" fill="currentColor"/><path d="M44 62h12l-6 8z" fill="currentColor"/>`,
+  star:()=>`<path d="m50 10 12 26 28 3-21 19 6 28-25-14-25 14 6-28-21-19 28-3z"/>`,
+  robot:()=>`<rect x="24" y="28" width="52" height="46" rx="8"/><path d="M50 28V14M44 14h12M14 44v14M86 44v14"/><circle cx="38" cy="48" r="6" fill="currentColor"/><circle cx="62" cy="48" r="6" fill="currentColor"/><path d="M38 64h24"/><path d="M36 74v12M64 74v12"/>`,
+  volcano:()=>`<path d="M10 88 38 42h24l28 46z"/><path d="M38 42l-6-8M62 42l6-8M50 36V20" opacity=".7"/><path d="M42 30c-6-8 4-14 8-20 6 6 14 12 8 20" opacity=".5"/>`,
+  book:()=>`<path d="M50 26c-10-8-26-10-38-6v58c12-4 28-2 38 6 10-8 26-10 38-6V20c-12-4-28-2-38 6zM50 26v58"/>`,
+  coin:()=>`<circle cx="50" cy="50" r="36"/><circle cx="50" cy="50" r="24" opacity=".5"/><path d="M50 36v28M42 44c0-8 16-8 16 0s-16 4-16 12 16 8 16 0" opacity=".9"/>`
+};
+function iconSvg(name,x,y,s){
+  const g=(ICONS[name]||ICONS.star)();
+  return `<g transform="translate(${x},${y}) scale(${s})" fill="none" stroke="currentColor" stroke-width="${(3/s).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px currentColor)">${g}</g>`;
+}
+const capSvg=(c,y)=>c?T(180,y,esc(c),{size:c.length>44?10:11.5,fill:'#c9cde0'}):'';
+const ARTT = {
+  bignum(a){
+    const txt=a.big+(a.unit?' '+a.unit:'');
+    const size=txt.length<=6?64:txt.length<=9?50:txt.length<=12?40:32;
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      ${T(180,112,esc(txt),{size,fill:'currentColor',weight:700})}
+      ${capSvg(a.cap,150)}
+      ${a.sub?T(180,176,esc(a.sub),{size:10.5}):''}
+    </svg>`;
+  },
+  timeline(a){
+    const it=a.items, ys=it.map(i=>i.y), lo=Math.min(...ys), hi=Math.max(...ys), span=Math.max(1,hi-lo);
+    /* Positionen nach Jahr verteilen, aber mit Mindestabstand, damit Beschriftungen nicht überlappen */
+    const xs=it.map(i=>100+(i.y-lo)/span*160);
+    for(let k=1;k<xs.length;k++) xs[k]=Math.max(xs[k],xs[k-1]+58);
+    const over=xs[xs.length-1]-262; if(over>0) for(let k=0;k<xs.length;k++) xs[k]=Math.max(xs[k]-over,k*58+70);
+    const pts=it.map((i,n)=>{
+      const x=xs[n];
+      return `<circle cx="${x}" cy="104" r="6" fill="currentColor"/>
+        ${T(x,86,i.y,{size:15,fill:'#eef0f7',weight:700})}
+        ${T(x,128+(n%2)*18,esc(i.label),{size:10.5})}`;
+    }).join('');
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      <line x1="40" y1="104" x2="320" y2="104" stroke="currentColor" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+      ${pts}
+      ${capSvg(a.cap,196)}
+    </svg>`;
+  },
+  bars(a){
+    const mx=Math.max(...a.rows.map(r=>r.v)), gap=a.rows.length>2?46:58, y0=a.rows.length>2?30:40;
+    const rows=a.rows.map((r,n)=>{
+      const y=y0+n*gap, w=Math.max(5,r.v/mx*280);
+      return `${T(40,y,esc(r.label),{size:11,anchor:'start'})}${T(320,y,esc(r.text),{size:12,anchor:'end',fill:'#eef0f7',weight:700})}
+        <rect x="40" y="${y+8}" width="280" height="20" rx="5" fill="rgba(255,255,255,.06)"/>
+        <rect x="40" y="${y+8}" width="${w}" height="20" rx="5" fill="currentColor" opacity="${r.hl?1:.4}"/>`;
+    }).join('');
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">${rows}${capSvg(a.cap,200)}</svg>`;
+  },
+  icon(a){
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      ${iconSvg(a.icon,120,18,1.2)}
+      ${T(180,166,esc(a.label),{size:14,fill:'#eef0f7',weight:700})}
+      ${a.sub?T(180,190,esc(a.sub),{size:10.5}):''}
+    </svg>`;
+  },
+  duo(a){
+    return `<svg viewBox="0 0 360 220" aria-hidden="true">
+      ${iconSvg(a.a.icon,48,24,.9)}${iconSvg(a.b.icon,222,24,.9)}
+      ${T(180,92,esc(a.op),{size:30,fill:'#eef0f7'})}
+      ${T(90,140,esc(a.a.label),{size:10.5,fill:'#eef0f7'})}${T(270,140,esc(a.b.label),{size:10.5,fill:'#eef0f7'})}
+      ${capSvg(a.cap,190)}
+    </svg>`;
+  }
+};
+function artSvg(f){
+  if(typeof f.art==='string') return ART[f.art]();
+  return ARTT[f.art.t](f.art);
+}
+
 /* ---------- Facts (prototype pack, checked against the linked sources) ---------- */
 const FACTS = [
  {id:"tech-001",topic:"Technik",art:"coffee",
@@ -428,12 +515,1393 @@ const FACTS = [
   ice:"Der größte Börsenplatz der Welt fing als Treffen von 24 Leuten unter einem Baum an.",
   src:["Wikipedia: Buttonwood Agreement","https://en.wikipedia.org/wiki/Buttonwood_Agreement"]}
 ];
+/* ---------- Faktenpaket v2: neue Fakten, Grafiken per Vorlage ---------- */
+const APP_VERSION = "v2";
+const NEW_FACTS = [
+ {
+  "id": "tech-101",
+  "topic": "Technik",
+  "hook": "Der erste Barcode, der je an einer Supermarktkasse gescannt wurde, klebte auf einem Kaugummi.",
+  "body": "Am 26. Juni 1974 um 8:01 Uhr zog die Kassiererin Sharon Buchanan im Marsh Supermarket in Troy, Ohio, eine Zehnerpackung Wrigley’s Juicy Fruit über den Laserscanner. Der Kaugummi war Absicht: Er sollte beweisen, dass der Code sogar auf winzige Packungen passt.",
+  "ice": "Der allererste gescannte Strichcode der Welt war ein Kaugummi.",
+  "src": [
+   "Smithsonian Magazine: Geschichte des Barcodes",
+   "https://www.smithsonianmag.com/innovation/history-of-bar-code-180956704/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "8:01",
+   "unit": "Uhr",
+   "cap": "26. Juni 1974 · Troy, Ohio",
+   "sub": "Kaugummi, 67 Cent"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-102",
+  "topic": "Technik",
+  "hook": "Die erste Nachricht im Internet sollte „LOGIN“ heißen. Nach zwei Buchstaben stürzte das System ab.",
+  "body": "Am 29. Oktober 1969 versuchte der Student Charley Kline an der UCLA, sich auf einem Rechner des Stanford Research Institute einzuloggen. Es kamen nur „L“ und „O“ an, dann brach die Verbindung zusammen. Beim zweiten Versuch klappte es. So begann das ARPANET, der Vorläufer des Internets.",
+  "ice": "Das Internet startete mit einem Absturz: Die erste Nachricht war nur „LO“.",
+  "src": [
+   "NPR: „Lo“ and Behold",
+   "https://www.npr.org/2009/10/29/114280698/lo-and-behold-a-communication-revolution"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "2 von 5",
+   "unit": "Buchstaben",
+   "cap": "kamen an · 29. Oktober 1969",
+   "sub": "gewollt: LOGIN, angekommen: LO"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-103",
+  "topic": "Technik",
+  "hook": "Strg+Alt+Entf war ein Notbehelf für Entwickler. Bill Gates nannte es später einen Fehler.",
+  "body": "Der IBM-Ingenieur David Bradley baute die Tastenkombination um 1980 in den ersten IBM-PC ein, damit Entwickler abgestürzte Rechner neu starten konnten. Nutzer sollten sie nie sehen. Microsoft machte sie später zum Login-Griff. 2013 sagte Gates in Harvard, eine einzige Taste wäre besser gewesen: Das sei ein Fehler gewesen.",
+  "ice": "Strg+Alt+Entf war eigentlich ein Entwickler-Trick. Bill Gates hat später selbst gesagt, dass es ein Fehler war.",
+  "src": [
+   "PBS NewsHour",
+   "https://www.pbs.org/newshour/nation/famous-keyboard-shortcut-was-a-mistake-says-bill-gates"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "1 statt 3",
+   "unit": "Tasten",
+   "cap": "Gates’ Wunsch fürs Login",
+   "sub": "Harvard, 2013"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-104",
+  "topic": "Technik",
+  "hook": "Rund 99 % des internationalen Datenverkehrs laufen nicht über Satelliten, sondern durch Kabel am Meeresboden.",
+  "body": "Wenn du eine Nachricht nach Übersee schickst, reist sie fast immer durch Glasfaserkabel auf dem Grund der Ozeane. Satelliten tragen nur einen winzigen Rest. Die Analysten von TeleGeography bestätigen die Größenordnung, auch wenn sich der genaue Wert mangels Satellitendaten nicht exakt berechnen lässt.",
+  "ice": "Das Internet ist kein Funknetz in der Luft, sondern ein Kabel auf dem Meeresgrund.",
+  "src": [
+   "TeleGeography: Mythbusting 2023",
+   "https://blog.telegeography.com/2023-mythbusting-part-3"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "99 %",
+   "cap": "des Datenverkehrs zwischen Kontinenten",
+   "sub": "läuft durch Seekabel"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-105",
+  "topic": "Technik",
+  "hook": "Ohne Einsteins Relativitätstheorie läge dein Navi nach einem Tag über 10 Kilometer daneben.",
+  "body": "Die Atomuhren in GPS-Satelliten laufen durch die schwächere Schwerkraft und ihre hohe Geschwindigkeit zusammen etwa 38 Mikrosekunden pro Tag schneller als Uhren am Boden. Das klingt winzig. Aber GPS misst Signallaufzeiten, und Licht legt in dieser Zeit gut 11 Kilometer zurück (nachgerechnet). Deshalb wird die Abweichung schon in den Satelliten eingerechnet.",
+  "ice": "Dein Handy-Navi funktioniert nur, weil jemand Einsteins Relativitätstheorie eingerechnet hat.",
+  "src": [
+   "Ohio State University: Relativity and GPS",
+   "https://www.astronomy.ohio-state.edu/pogge.1/Ast162/Unit5/gps"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "38 µs",
+   "unit": "pro Tag",
+   "cap": "Vorsprung der GPS-Uhren",
+   "sub": "≈ 11 km Fehler pro Tag ohne Korrektur"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-106",
+  "topic": "Technik",
+  "hook": "Das erste Foto im Web zeigte eine Comedy-Band aus CERN-Mitarbeiterinnen.",
+  "body": "Am 18. Juli 1992 lud der CERN-Informatiker Silvano de Gennaro ein Bild der Parodieband „Les Horribles Cernettes“ hoch. Web-Erfinder Tim Berners-Lee hatte um ein paar Fotos der Gruppe gebeten, die Lieder über Teilchenphysik sang. Laut Guinness war das Bild nur etwa 120 × 50 Pixel groß.",
+  "ice": "Das erste Foto im Internet war keine Rakete, sondern eine Physiker-Comedyband.",
+  "src": [
+   "Guinness World Records",
+   "https://www.guinnessworldrecords.com/world-records/450779-first-photo-posted-to-the-world-wide-web"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "120 × 50",
+   "unit": "Pixel",
+   "cap": "das erste Foto im Web",
+   "sub": "CERN · 18. Juli 1992"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-107",
+  "topic": "Technik",
+  "hook": "Der QR-Code wurde von einer Runde Go inspiriert.",
+  "body": "Der Ingenieur Masahiro Hara entwickelte ihn bei Denso Wave, einer Toyota-Tochter. Normale Barcodes fassten nur etwa 20 Zeichen, deshalb scannten Arbeiter pro Teil mehrere nacheinander. Beim Go-Spielen in der Mittagspause fiel ihm auf, wie viel Information ein Raster aus schwarzen und weißen Steinen trägt. 1994 war der Code fertig, die Firma gab die Nutzung frei.",
+  "ice": "Der QR-Code stammt von einem Brettspiel: Der Erfinder hat ihn beim Go-Spielen in der Mittagspause erdacht.",
+  "src": [
+   "IEEE Spectrum: How a board game inspired the QR code",
+   "https://spectrum.ieee.org/how-a-board-game-and-skyscrapers-inspired-the-development-of-the-qr-code"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "go",
+    "label": "Go-Brett"
+   },
+   "op": "→",
+   "b": {
+    "icon": "qr",
+    "label": "QR-Code"
+   },
+   "cap": "Denso Wave · 1994"
+  },
+  "v": 2
+ },
+ {
+  "id": "tech-108",
+  "topic": "Technik",
+  "hook": "Dein Handy hat über eine Million Mal mehr Arbeitsspeicher als der Computer der Mondlandung.",
+  "body": "Der Apollo Guidance Computer hatte rund 4 Kilobyte Arbeitsspeicher und 72 Kilobyte fest verdrahteten Festspeicher. Ein Smartphone mit 4 Gigabyte RAM bringt es auf mehr als das Eine-Million-Fache. Mit dieser Technik landeten Armstrong und Aldrin 1969 auf dem Mond.",
+  "ice": "Zum Mond flog man mit 4 Kilobyte Arbeitsspeicher. Dein Handy hat Millionen Mal mehr.",
+  "src": [
+   "Weltwirtschaftsforum: Moon landing vs. smartphone",
+   "https://www.weforum.org/stories/2019/07/one-small-step-for-man-one-giant-leap-for-your-mobile-phone/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "4 KB",
+   "unit": "RAM",
+   "cap": "Apollo-Bordcomputer, 1969",
+   "sub": "Handy heute: 4 GB und mehr"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-101",
+  "topic": "AI",
+  "hook": "Für Computer war Schach leicht. Einen Becher greifen war schwer.",
+  "body": "Das ist das Moravec-Paradox: Logik und Rechnen brauchen wenig Rechenleistung, Wahrnehmung und Bewegung sehr viel. Hans Moravec erklärte das mit der Evolution. Sehen und Greifen wurden über extrem lange Zeit optimiert, abstraktes Denken ist ein junger Trick. Schon 1997 schlug ein Computer den Schachweltmeister, während Roboter noch lange an dem scheiterten, was ein Einjähriges mühelos kann.",
+  "ice": "Eine KI schlägt dich im Schach, aber ein Kleinkind greift besser nach einer Tasse.",
+  "src": [
+   "Wikipedia: Moravec’s paradox",
+   "https://en.wikipedia.org/wiki/Moravec%27s_paradox"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "crown",
+    "label": "Schach: gelöst"
+   },
+   "op": "vs",
+   "b": {
+    "icon": "hand",
+    "label": "Greifen: lange schwer"
+   },
+   "cap": "Moravec-Paradox"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-102",
+  "topic": "AI",
+  "hook": "Amazons „Mechanical Turk“ ist nach einer Schachmaschine benannt, in der ein Mensch versteckt saß.",
+  "body": "1770 baute Wolfgang von Kempelen einen angeblichen Schachautomaten für Kaiserin Maria Theresia. In Wahrheit steuerte ihn ein versteckter Schachmeister. Der Schwindel hielt rund 84 Jahre. 2005 nannte Amazon seine Plattform für menschliche Mikroarbeit nach ihm. Auch dort steckt hinter der scheinbaren Maschine ein Mensch.",
+  "ice": "Der Name von Amazons Mechanical Turk kommt von einer Schach-KI aus dem Jahr 1770, in der ein Mensch saß.",
+  "src": [
+   "Wikipedia: Mechanical Turk",
+   "https://en.wikipedia.org/wiki/Mechanical_Turk"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1770,
+     "label": "Turk"
+    },
+    {
+     "y": 1854,
+     "label": "Brand"
+    },
+    {
+     "y": 2005,
+     "label": "Amazon MTurk"
+    }
+   ],
+   "cap": "ein Mensch im Kasten, 84 Jahre lang"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-103",
+  "topic": "AI",
+  "hook": "Mit CAPTCHAs hast du jahrelang unbezahlt Bücher digitalisiert.",
+  "body": "Der Erfinder Luis von Ahn rechnete 2008 vor: Rund 200 Millionen CAPTCHAs werden täglich getippt, etwa 500.000 Stunden Lebenszeit. Sein Trick „reCAPTCHA“: Neben einem bekannten Wort bekamst du eines, das die Texterkennung beim Scannen alter Bücher nicht lesen konnte. So wurden unter anderem alte Ausgaben der New York Times digitalisiert.",
+  "ice": "Wenn du früher ein verzerrtes Wort eingetippt hast, hast du nebenbei ein altes Buch digitalisiert.",
+  "src": [
+   "NPR: Web Security Words Help Digitize Old Books",
+   "https://www.npr.org/2008/08/14/93605988/web-security-words-help-digitize-old-books"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "500.000",
+   "unit": "Stunden",
+   "cap": "pro Tag verbrachte die Menschheit 2008 mit CAPTCHAs",
+   "sub": "≈ 200 Mio. CAPTCHAs täglich"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-104",
+  "topic": "AI",
+  "hook": "Deep Blue schlug Kasparov vielleicht auch wegen eines Software-Fehlers.",
+  "body": "Am Ende von Partie 1 spielte der Computer einen Zug, den Kasparov nicht verstand. Laut IBM-Entwickler Murray Campbell lag das an einem Bug: In der Enge wählte Deep Blue einen zufälligen Zug. Kasparov habe das für ein Zeichen höherer Intelligenz gehalten. Die Geschichte stammt aus Nate Silvers Buch „The Signal and the Noise“.",
+  "ice": "Kasparov dachte, Deep Blue sei genial. Dabei war es angeblich ein Bug.",
+  "src": [
+   "NBC News: Glitch may have helped supercomputer",
+   "https://www.nbcnews.com/tech/tech-news/glitch-may-have-helped-supercomputer-beat-chess-champ-historic-match-flna6206532"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "chip",
+    "label": "Deep Blue"
+   },
+   "op": "=",
+   "b": {
+    "icon": "bug",
+    "label": "zufälliger Zug"
+   },
+   "cap": "Kasparov, 1997"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-105",
+  "topic": "AI",
+  "hook": "Das erste KI-Bild bei Christie’s war statt mit einem Namen mit einer Formel signiert.",
+  "body": "„Edmond de Belamy“ des Pariser Kollektivs Obvious wurde im Oktober 2018 für 432.500 Dollar verkauft, geschätzt war es auf 7.000 bis 10.000. Statt einer Künstlersignatur steht unten rechts ein Ausschnitt aus der Formel des Algorithmus. Die KI hatte zuvor 15.000 Porträts vom 14. bis 20. Jahrhundert gesehen.",
+  "ice": "Das erste KI-Gemälde auf einer großen Auktion kostete 432.500 Dollar und trägt als Signatur eine mathematische Formel.",
+  "src": [
+   "TIME: AI painting sold at Christie’s",
+   "https://time.com/5435683/artificial-intelligence-painting-christies/"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Schätzung",
+     "v": 10000,
+     "text": "max. 10.000 $"
+    },
+    {
+     "label": "Zuschlag",
+     "v": 432500,
+     "text": "432.500 $",
+     "hl": true
+    }
+   ],
+   "cap": "Christie’s, Oktober 2018"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-106",
+  "topic": "AI",
+  "hook": "Ein Hobbyspieler schlug 2023 eine Go-KI mit 14 zu 1, mit einem Trick, den eine andere KI gefunden hatte.",
+  "body": "Kellin Pelrine, ein starker Amateur, gewann 14 von 15 Partien gegen KataGo, eine KI, die Profis besiegt. Ein Programm von FAR AI hatte die blinde Stelle gefunden: KataGo übersah, wenn man ihre Steine langsam mit einem Ring umschloss. Die Gegner-KI selbst spielt schlecht Go und verliert sogar gegen Amateure, nutzt aber genau diesen Fehler aus.",
+  "ice": "Eine Super-KI im Go hat eine blinde Stelle, die ein Amateur ausnutzen kann.",
+  "src": [
+   "The Register: Humans strike back at Go-playing AI",
+   "https://www.theregister.com/2023/02/20/human_go_ai_defeat/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "14 : 1",
+   "cap": "Amateur gegen Go-KI KataGo",
+   "sub": "mit einem Trick einer anderen KI"
+  },
+  "v": 2
+ },
+ {
+  "id": "ai-107",
+  "topic": "AI",
+  "hook": "Netflix zahlte 1 Million Dollar für einen Algorithmus und nutzte ihn nie.",
+  "body": "2009 gewann das Team BellKor’s Pragmatic Chaos den Netflix Prize, weil es die Empfehlungen um 10 % verbessert hatte. Später erklärte Netflix, der Mehrgewinn rechtfertige den Aufwand für den Einsatz nicht, außerdem war das Geschäft vom DVD-Versand zum Streaming gewandert. Algorithmen aus früheren Wettbewerbsrunden laufen dagegen bis heute.",
+  "ice": "Netflix hat eine Million Dollar für einen Algorithmus gezahlt und ihn dann nie eingebaut.",
+  "src": [
+   "The Next Web: Why Netflix didn’t use the winning entry",
+   "https://thenextweb.com/news/remember-netflixs-1m-algorithm-contest-well-heres-why-it-didnt-use-the-winning-entry"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "1 Mio. $",
+   "cap": "Preisgeld, Netflix Prize 2009",
+   "sub": "Algorithmus nie eingesetzt"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-101",
+  "topic": "Politik",
+  "hook": "Andorras Staatsoberhaupt ist der französische Präsident, zusammen mit einem spanischen Bischof.",
+  "body": "Andorra hat zwei Co-Fürsten: den Präsidenten Frankreichs und den Bischof von Urgell in Katalonien. Die Doppelspitze geht auf einen mittelalterlichen Streit zwischen Bischof und Grafen zurück, die Franzosen erbten den Anspruch später. Die Andorraner können keinen der beiden wählen. Ihre Macht ist laut Verfassung von 1993 stark begrenzt.",
+  "ice": "Der französische Präsident ist nebenbei auch Staatsoberhaupt von Andorra, und die Andorraner dürfen ihn nicht mal mitwählen.",
+  "src": [
+   "Wikipedia: Co-princes of Andorra",
+   "https://en.wikipedia.org/wiki/Co-princes_of_Andorra"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "crown",
+    "label": "Bischof von Urgell"
+   },
+   "op": "+",
+   "b": {
+    "icon": "crown",
+    "label": "Präsident Frankreichs"
+   },
+   "cap": "= Staatsoberhaupt von Andorra"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-102",
+  "topic": "Politik",
+  "hook": "In einem Schweizer Kanton durften Frauen erst 1990 mitentscheiden, und das nur wegen eines Gerichtsurteils.",
+  "body": "Die Landsgemeinde von Appenzell Innerrhoden stimmte am 29. April 1990 erneut gegen das Frauenstimmrecht. Frauen zogen vor das Bundesgericht, und am 27. November 1990 entschied es einstimmig, dass sie kantonal wählen und abstimmen dürfen. Auf Bundesebene gilt das Frauenstimmrecht in der Schweiz seit 1971.",
+  "ice": "1990 wurde Deutschland wiedervereinigt, und in einem Schweizer Kanton durften Frauen noch nicht abstimmen.",
+  "src": [
+   "SRF: Frauenwahlrecht in Appenzell Innerrhoden",
+   "https://www.srf.ch/kultur/der-archivar-es-bestand-kein-grund-mehr-frauen-das-wahlrecht-zu-verweigern"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1971,
+     "label": "Bund"
+    },
+    {
+     "y": 1990,
+     "label": "Appenzell I.Rh."
+    }
+   ],
+   "cap": "19 Jahre später im letzten Kanton"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-103",
+  "topic": "Politik",
+  "hook": "San Marino wechselt seine Staatsspitze alle sechs Monate, seit mindestens 1243.",
+  "body": "Statt eines Präsidenten wählt der Große und Allgemeine Rat zwei Capitani Reggenti, die gemeinsam regieren. Sie kommen meist aus gegnerischen Parteien, die Amtszeit beginnt am 1. April oder 1. Oktober, und nach drei Jahren Pause dürfen sie wieder antreten. Nach ihrer Amtszeit haben Bürger drei Tage Zeit, sich über sie zu beschweren.",
+  "ice": "San Marino hat zwei Staatsoberhäupter, die alle sechs Monate wechseln. Das System ist über 700 Jahre alt.",
+  "src": [
+   "Wikipedia: Politics of San Marino",
+   "https://en.wikipedia.org/wiki/Politics_of_San_Marino"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "6 Monate",
+   "cap": "Amtszeit der zwei Staatsoberhäupter",
+   "sub": "seit mindestens 1243"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-104",
+  "topic": "Politik",
+  "hook": "In Estland wird mehr als die Hälfte aller Stimmen online abgegeben.",
+  "body": "Estland hielt 2005 als erstes Land rechtsverbindliche Wahlen mit Internet-Stimmabgabe ab. Bei der Parlamentswahl 2023 kamen rund 313.000 von 615.000 Stimmen übers Netz, erstmals mehr als die Hälfte. Wer online gewählt hat, kann seine Stimme beliebig oft ändern. Es zählt die letzte.",
+  "ice": "In Estland wählt man mit dem Handy, und die Hälfte macht es.",
+  "src": [
+   "Semafor: First mostly online national election",
+   "https://www.semafor.com/article/03/06/2023/estonia-holds-first-mostly-online-national-election"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "51 %",
+   "cap": "Online-Stimmen bei der Wahl 2023",
+   "sub": "313.000 von 615.000"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-105",
+  "topic": "Politik",
+  "hook": "Kanada und Dänemark führten fast 50 Jahre lang einen „Whisky-Krieg“, ohne dass je ein Schuss fiel.",
+  "body": "Seit 1973 stritten sie um die winzige, unbewohnte Hans-Insel in der Arktis. Beide Seiten hissten dort Flaggen und ließen Flaschen zurück, Kanada Whisky, Dänemark Schnaps. Im Juni 2022 teilten sie die Insel, die Grenze verläuft nun entlang einer Felsspalte. Damit hat Kanada eine Landgrenze zu Europa.",
+  "ice": "Zwei Länder haben jahrzehntelang um eine Insel gestritten, indem sie dort Schnaps und Whisky hinterließen.",
+  "src": [
+   "Library of Congress: Hans Island Peace Agreement",
+   "https://blogs.loc.gov/law/2022/06/the-hans-island-peace-agreement-between-canada-denmark-and-greenland/"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "bottle",
+    "label": "Kanada: Whisky"
+   },
+   "op": "vs",
+   "b": {
+    "icon": "bottle",
+    "label": "Dänemark: Schnaps"
+   },
+   "cap": "Hans-Insel · 1973–2022"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-106",
+  "topic": "Politik",
+  "hook": "Belgien hatte 541 Tage lang keine neue Regierung und funktionierte trotzdem.",
+  "body": "Nach der Wahl am 13. Juni 2010 einigten sich die Parteien monatelang nicht. Erst am 6. Dezember 2011 wurde die Regierung von Elio Di Rupo vereidigt. Dazwischen führte eine geschäftsführende Regierung das Land weiter, das ist Weltrekord laut Guinness. Der Haushalt wurde in der Zeit monatsweise fortgeschrieben.",
+  "ice": "Belgien lief fast anderthalb Jahre ohne neue Regierung weiter. Es ist der Weltrekord.",
+  "src": [
+   "Guinness World Records: Longest time without a government",
+   "https://www.guinnessworldrecords.com/world-records/96893-longest-time-without-a-government-in-peacetime"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "541",
+   "unit": "Tage",
+   "cap": "ohne neue Regierung · Belgien 2010/11"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-107",
+  "topic": "Politik",
+  "hook": "Die Schweiz hat offiziell keine Hauptstadt.",
+  "body": "Bern ist Sitz von Regierung und Parlament, heißt aber „Bundesstadt“. Die Verfassungen von 1848 und 1874 sprachen nur von einer Bundesstadt, weil man keine Stadt zu mächtig machen wollte. Die heutige Verfassung von 1999 erwähnt Bern gar nicht mehr.",
+  "ice": "Frag mal, welche Stadt die Hauptstadt der Schweiz ist. Offiziell gibt es keine.",
+  "src": [
+   "swissinfo: Why Switzerland hasn’t got a capital city",
+   "https://www.swissinfo.ch/eng/swiss-oddities/why-switzerland-hasnt-got-a-capital-city/89071876"
+  ],
+  "art": {
+   "t": "icon",
+   "icon": "flag",
+   "label": "Bern = „Bundesstadt“",
+   "sub": "eine Hauptstadt kennt die Verfassung nicht"
+  },
+  "v": 2
+ },
+ {
+  "id": "pol-108",
+  "topic": "Politik",
+  "hook": "Islands Parlament tagt seit dem Jahr 930, unter freiem Himmel gegründet.",
+  "body": "Der Althing wurde um 930 auf den Thingfeldern (Þingvellir) gegründet, etwa 45 Kilometer östlich des heutigen Reykjavík. Er gilt als das älteste Parlament der Welt. 1800 wurde er allerdings abgeschafft und erst 1845 neu gegründet.",
+  "ice": "Das älteste Parlament der Welt wurde von Wikingern auf einem Feld gegründet, im Jahr 930.",
+  "src": [
+   "Wikipedia: Althing",
+   "https://en.wikipedia.org/wiki/Althing"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 930,
+     "label": "Gründung"
+    },
+    {
+     "y": 1800,
+     "label": "abgeschafft"
+    },
+    {
+     "y": 1845,
+     "label": "neu"
+    }
+   ],
+   "cap": "Alþingi, Island"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-101",
+  "topic": "Geschichte",
+  "hook": "Die Uni Oxford ist älter als das Aztekenreich.",
+  "body": "In Oxford wird nachweislich seit spätestens 1096 gelehrt. Tenochtitlán, die Hauptstadt der Azteken, wurde erst 1325 gegründet. Als die Azteken ihre Stadt bauten, lief der Lehrbetrieb in Oxford also schon über 200 Jahre.",
+  "ice": "Oxford gab es schon, bevor es Tenochtitlán gab – die Uni ist älter als die Azteken.",
+  "src": [
+   "Smithsonian Magazine: Oxford ist älter als die Azteken",
+   "https://www.smithsonianmag.com/smart-news/oxford-university-is-older-than-the-aztecs-1529607/"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1096,
+     "label": "Lehre in Oxford"
+    },
+    {
+     "y": 1325,
+     "label": "Tenochtitlán"
+    }
+   ],
+   "cap": "229 Jahre Vorsprung"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-102",
+  "topic": "Geschichte",
+  "hook": "Als die Pyramiden schon uralt waren, lebten immer noch Mammuts.",
+  "body": "Auf der arktischen Wrangel-Insel überlebte eine kleine Mammut-Gruppe bis vor rund 4.000 Jahren. Die Cheops-Pyramide in Gizeh stand zu der Zeit schon seit Jahrhunderten. Die letzten Mammuts starben also nicht in der Eiszeit, sondern in der Bronzezeit.",
+  "ice": "Die Cheops-Pyramide war schon Jahrhunderte alt, da lebten noch Mammuts.",
+  "src": [
+   "Gizmodo: Die letzten Mammuts von Wrangel",
+   "https://gizmodo.com/how-the-last-woolly-mammoths-met-their-demise-on-a-remo-1838848130/amp"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "4.000",
+   "unit": "Jahre",
+   "cap": "so lange ist das letzte Mammut tot",
+   "sub": "Pyramiden standen schon"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-103",
+  "topic": "Geschichte",
+  "hook": "Australiens Armee ging 1932 mit Maschinengewehren gegen Emus los – und verlor.",
+  "body": "Emus zerstörten die Weizenfelder von Kriegsveteranen in Westaustralien. Drei Soldaten mit zwei Maschinengewehren sollten rund 20.000 Vögel erledigen. Die Emus waren schnell und verteilten sich, nur 986 wurden bestätigt getroffen. Nach gut fünf Wochen war der Einsatz vorbei, die Emu-Population kaum kleiner.",
+  "ice": "Australien hat 1932 mit Maschinengewehren gegen Emus gekämpft und den „Emu-Krieg“ verloren.",
+  "src": [
+   "Wikipedia: Emu War",
+   "https://en.wikipedia.org/wiki/Emu_War"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Emus",
+     "v": 20000,
+     "text": "ca. 20.000"
+    },
+    {
+     "label": "Getroffen",
+     "v": 986,
+     "text": "986",
+     "hl": true
+    }
+   ],
+   "cap": "10.000 Schuss, fast kein Effekt"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-104",
+  "topic": "Geschichte",
+  "hook": "Bis 2020 zahlten die USA noch eine Rente für den Bürgerkrieg.",
+  "body": "Irene Triplett, geboren 1930, bekam jeden Monat 73,13 Dollar vom Veteranenministerium. Ihr Vater Mose hatte im Bürgerkrieg erst für die Konföderierten, dann für die Union gekämpft, und war bei ihrer Geburt 83. Wegen ihrer geistigen Beeinträchtigung erbte sie seine Pension. Sie starb am 31. Mai 2020 mit 90.",
+  "ice": "Bis 2020 hat die USA noch eine Bürgerkriegsrente von 1861–65 ausgezahlt.",
+  "src": [
+   "Wikipedia: Irene Triplett",
+   "https://en.wikipedia.org/wiki/Irene_Triplett"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "73,13 $",
+   "unit": "im Monat",
+   "cap": "Bürgerkriegsrente bis Mai 2020",
+   "sub": "Irene Triplett, 1930–2020"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-105",
+  "topic": "Geschichte",
+  "hook": "Frankreich köpfte noch Menschen, als der erste Star-Wars-Film im Kino lief.",
+  "body": "Star Wars startete im Mai 1977 in den USA. Am 10. September 1977 wurde in Marseille Hamida Djandoubi als letzter Mensch in Frankreich mit der Guillotine hingerichtet. Die Todesstrafe schaffte das Land erst 1981 ab.",
+  "ice": "Die letzte Guillotine-Hinrichtung war im selben Jahr wie der erste Star-Wars-Film.",
+  "src": [
+   "History.com: Die Guillotine verstummt",
+   "https://www.history.com/this-day-in-history/september-10/the-guillotine-falls-silent"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1977,
+     "label": "Star Wars & letzte Guillotine"
+    },
+    {
+     "y": 1981,
+     "label": "Todesstrafe abgeschafft"
+    }
+   ],
+   "cap": "gleiches Jahr, Mai bis September"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-106",
+  "topic": "Geschichte",
+  "hook": "Großbritannien hat bis 2015 Schulden aus der Abschaffung der Sklaverei abbezahlt.",
+  "body": "1833 lieh sich der britische Staat 20 Millionen Pfund, um Sklavenbesitzer für ihre Freilassungen zu entschädigen. Das waren rund 40 Prozent der Staatsausgaben. Die Schulden wurden später in andere Staatsanleihen umgeschichtet und erst 2015 endgültig getilgt. Bezahlt haben also auch Nachfahren der Versklavten mit.",
+  "ice": "Die Briten haben die Entschädigung für Sklavenhalter von 1833 erst 2015 abbezahlt.",
+  "src": [
+   "Full Fact: Der Kredit zur Entschädigung von 1833",
+   "https://fullfact.org/economy/slavery-abolition-act-loan/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "182",
+   "unit": "Jahre",
+   "cap": "von 1833 bis 2015",
+   "sub": "20 Mio. £ ≈ 40 % des Staatshaushalts"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-107",
+  "topic": "Geschichte",
+  "hook": "Der kürzeste Krieg der Geschichte dauerte kürzer als eine Fußball-Halbzeit.",
+  "body": "Am 27. August 1896 beschoss die britische Marine den Palast des Sultans von Zanzibar, weil er sich ohne ihre Zustimmung auf den Thron gesetzt hatte. Um 9:02 Uhr ging es los, um etwa 9:40 Uhr war alles vorbei. Die Zahlen schwanken zwischen 38 und 45 Minuten.",
+  "ice": "Der Anglo-Sansibar-Krieg 1896 dauerte 38 Minuten und war der kürzeste Krieg der Welt.",
+  "src": [
+   "History Today: Der Anglo-Zanzibar-Krieg",
+   "https://www.historytoday.com/archive/months-past/anglo-zanzibar-war"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "38",
+   "unit": "Min.",
+   "cap": "Anglo-Sansibar-Krieg · 27. Aug. 1896",
+   "sub": "9:02 bis ca. 9:40 Uhr"
+  },
+  "v": 2
+ },
+ {
+  "id": "hist-108",
+  "topic": "Geschichte",
+  "hook": "Samoa hat einmal einen ganzen Tag übersprungen: den 30. Dezember 2011.",
+  "body": "Um Handel mit Australien und Neuseeland zu erleichtern, wechselte Samoa die Seite der Datumsgrenze. Um Mitternacht ging es von Donnerstag, dem 29. Dezember, direkt zu Samstag, dem 31. Dezember 2011. Der Freitag existiert in Samoa nicht.",
+  "ice": "In Samoa gab es 2011 keinen 30. Dezember – der Tag wurde einfach übersprungen.",
+  "src": [
+   "Wikipedia: Time in Samoa",
+   "https://en.wikipedia.org/wiki/Time_in_Samoa"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "calendar",
+    "label": "Do 29. Dez."
+   },
+   "op": "→",
+   "b": {
+    "icon": "calendar",
+    "label": "Sa 31. Dez."
+   },
+   "cap": "Samoa 2011 · Freitag gestrichen"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-101",
+  "topic": "Sci-Fi",
+  "hook": "Der Mann, der „Cyberspace“ erfand, schrieb seinen Roman auf einer Schreibmaschine von 1937.",
+  "body": "William Gibson prägte das Wort 1982 in einer Kurzgeschichte und machte es 1984 mit „Neuromancer“ berühmt. Geschrieben hat er das Buch auf einer alten Hermes-Schreibmaschine. Einen Computer kaufte er sich erst, nachdem das Buch Geld eingebracht hatte.",
+  "ice": "Der Erfinder des Wortes „Cyberspace“ hat seinen Cyberpunk-Roman auf einer Schreibmaschine getippt.",
+  "src": [
+   "Britannica: Neuromancer",
+   "https://britannica.com/topic/Neuromancer"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "typewriter",
+    "label": "Schreibmaschine, 1937"
+   },
+   "op": "→",
+   "b": {
+    "icon": "globe",
+    "label": "Cyberspace"
+   },
+   "cap": "Neuromancer · 1984"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-102",
+  "topic": "Sci-Fi",
+  "hook": "Der grüne Matrix-Code stammt angeblich aus japanischen Sushi-Rezepten.",
+  "body": "Produktionsdesigner Simon Whiteley erzählt gern, dass er Zeichen aus den Kochbüchern seiner japanischen Frau eingescannt hat. Daraus baute er die fallenden grünen Symbole. Lesen kann man sie nicht: Die Zeichen sind gespiegelt und mit Ziffern und lateinischen Buchstaben gemischt. Ein echtes Rezept lässt sich daraus nicht herausziehen.",
+  "ice": "Der Matrix-Code ist laut dem Designer aus Sushi-Rezepten gebaut – lesen kann man davon nichts.",
+  "src": [
+   "Wikipedia: Digital rain",
+   "https://en.wikipedia.org/wiki/Digital_rain"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "sushi",
+    "label": "Sushi-Kochbuch"
+   },
+   "op": "→",
+   "b": {
+    "icon": "chip",
+    "label": "Matrix-Code"
+   },
+   "cap": "The Matrix · 1999"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-103",
+  "topic": "Sci-Fi",
+  "hook": "Der Autor von „Blade Runner“ starb vier Monate vor dem Kinostart.",
+  "body": "Philip K. Dick schrieb die Romanvorlage „Träumen Androiden von elektrischen Schafen?“. Er starb am 2. März 1982, der Film kam im Juni ins Kino. Gesehen hat er nur etwa 20 Minuten Spezialeffekte, die ihn begeisterten. Den Erfolg, der aus seinem Buch eine Legende machte, hat er nie erlebt.",
+  "ice": "Der Autor von Blade Runner ist gestorben, bevor der Film im Kino lief.",
+  "src": [
+   "Common Reader (WashU): Philip K. Dick",
+   "https://commonreader.wustl.edu/?p=50681"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "knapp 4",
+   "unit": "Monate",
+   "cap": "Dicks Tod bis Blade-Runner-Premiere",
+   "sub": "2. März – 25. Juni 1982"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-104",
+  "topic": "Sci-Fi",
+  "hook": "Chewbacca basiert auf dem Hund von George Lucas, nach dem später Indiana Jones benannt wurde.",
+  "body": "Lucas hatte einen Alaskan Malamute namens Indiana, der im Auto auf dem Beifahrersitz saß wie ein Co-Pilot. Daraus entstand der Gedanke an einen pelzigen, loyalen Partner für Han Solo. Derselbe Hund lieh später dem Archäologen Indiana Jones seinen Namen.",
+  "ice": "Chewbacca und Indiana Jones gehen auf denselben Hund zurück.",
+  "src": [
+   "Wikipedia: Chewbacca",
+   "https://en.wikipedia.org/wiki/Chewbacca"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "dog",
+    "label": "Indiana, der Hund"
+   },
+   "op": "→",
+   "b": {
+    "icon": "star",
+    "label": "Chewbacca"
+   },
+   "cap": "und auch „Indiana Jones“"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-105",
+  "topic": "Sci-Fi",
+  "hook": "Isaac Asimov erfand das Wort „Robotik“ aus Versehen: Er dachte, es gäbe es schon.",
+  "body": "In seiner Kurzgeschichte „Liar!“ von 1941 benutzte Asimov das Wort „robotics“ wie selbstverständlich. Er hängte einfach „-ics“ an „robot“, wie bei Physik oder Linguistik. Er hielt es für den längst üblichen Namen des Fachgebiets. Nach dem Oxford English Dictionary ist es aber seine Erfindung.",
+  "ice": "Asimov hat das Wort „Robotik“ erfunden, ohne es zu merken.",
+  "src": [
+   "Mental Floss: Fakten zu Asimovs „I, Robot“",
+   "https://www.mentalfloss.com/literature/books/isaac-asimov-i-robot-book-facts"
+  ],
+  "art": {
+   "t": "icon",
+   "icon": "robot",
+   "label": "„robotics“ · 1941",
+   "sub": "Asimov hielt es für ein altes Wort"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-106",
+  "topic": "Sci-Fi",
+  "hook": "Ein Vulkanausbruch in Indonesien hat indirekt „Frankenstein“ ausgelöst.",
+  "body": "Der Ausbruch des Tambora 1815 verdunkelte den Himmel, 1816 wurde zum „Jahr ohne Sommer“. Eine Gruppe um Lord Byron blieb am Genfer See tagelang drinnen eingesperrt. Aus dem Ghost-Story-Spiel dort entstand Mary Shelleys „Frankenstein“, oft als erster Science-Fiction-Roman bezeichnet.",
+  "ice": "Weil ein Vulkan den Sommer 1816 ruinierte, schrieb Mary Shelley „Frankenstein“.",
+  "src": [
+   "National Geographic: Wie ein Teenager zur Mutter des Horrors wurde",
+   "https://www.nationalgeographic.com/history/world-history-magazine/article/birth_of_Frankenstein_Mary_Shelley"
+  ],
+  "art": {
+   "t": "duo",
+   "a": {
+    "icon": "volcano",
+    "label": "Tambora, 1815"
+   },
+   "op": "→",
+   "b": {
+    "icon": "book",
+    "label": "Frankenstein"
+   },
+   "cap": "Jahr ohne Sommer · 1816"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-107",
+  "topic": "Sci-Fi",
+  "hook": "Die „Antwort auf alles“, die 42, hat Douglas Adams einfach so gewählt.",
+  "body": "Fans suchten jahrelang nach Bedeutung in der Zahl 42, von Binärcode bis Tibet. Adams erklärte 1993, es sei ein Witz gewesen: Er brauchte eine gewöhnliche, kleine Zahl, schaute aus dem Fenster in den Garten und dachte: 42 reicht.",
+  "ice": "Hinter der 42 aus „Per Anhalter durch die Galaxis“ steckt keine Bedeutung. Adams hat sie einfach genommen.",
+  "src": [
+   "Brendan Myers: Adams’ Antwort zu „42“",
+   "https://www.brendanmyers.net/blog/2018/05/anger-and-protest-in-douglas-adams-the-hitch-hikers-guide-to-the-galaxy/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "42",
+   "unit": "",
+   "cap": "die „Antwort auf alles“",
+   "sub": "Adams: „Ein Witz. 42 reicht.“"
+  },
+  "v": 2
+ },
+ {
+  "id": "scifi-108",
+  "topic": "Sci-Fi",
+  "hook": "Martin Luther King überzeugte die Uhura-Darstellerin, bei „Star Trek“ zu bleiben.",
+  "body": "Nichelle Nichols wollte nach der ersten Staffel kündigen und ans Broadway wechseln. Auf einer Spendengala traf sie Martin Luther King, der ein großer Fan der Serie war. Er sagte ihr sinngemäß, sie dürfe nicht gehen: Man würde sie sonst durch eine weiße Schauspielerin ersetzen, und alles Erreichte wäre weg. Sie blieb.",
+  "ice": "Martin Luther King hat die Uhura-Darstellerin überredet, bei Star Trek zu bleiben.",
+  "src": [
+   "History.com: Der Kuss bei Star Trek 1968",
+   "https://www.history.com/this-day-in-history/november-22/star-trek-interracial-kiss"
+  ],
+  "art": {
+   "t": "icon",
+   "icon": "star",
+   "label": "Uhura bleibt an Bord",
+   "sub": "Nichelle Nichols · Star Trek, 1966–69"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-101",
+  "topic": "Basketball",
+  "hook": "Wilt Chamberlain, ein miserabler Freiwerfer, traf in seinem 100-Punkte-Spiel 28 von 32 Freiwürfen.",
+  "body": "Am 2. März 1962 erzielte Chamberlain 100 Punkte gegen die Knicks. Dabei traf er 28 von 32 Freiwürfen, also 87,5 Prozent. In seiner Karriere lag seine Quote bei nur 51,1 Prozent. Genau die Schwäche, die ihn sonst bremste, spielte in dieser Nacht keine Rolle.",
+  "ice": "Wilt Chamberlain war ein schlechter Freiwerfer, und genau in seinem 100-Punkte-Spiel traf er fast alles.",
+  "src": [
+   "NBA.com: Wilt Chamberlain erzielt 100 Punkte",
+   "https://www.nba.com/news/most-points-scored-by-a-player-in-an-nba-game"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Karriere",
+     "v": 51.1,
+     "text": "51,1 %"
+    },
+    {
+     "label": "Die 100-Punkte-Nacht",
+     "v": 87.5,
+     "text": "87,5 %",
+     "hl": true
+    }
+   ],
+   "cap": "Freiwurfquote von Wilt Chamberlain"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-102",
+  "topic": "Basketball",
+  "hook": "Michael Jordan wurde in der High School gar nicht aus dem Team „geschmissen“.",
+  "body": "Die bekannte Geschichte sagt, Jordan sei als Sophomore aus dem Team gekickt worden. Tatsächlich gab es in seinem Jahr nur einen freien Platz im Varsity-Team. Den bekam der 2,01 Meter große Leroy Smith, Jordan (ca. 1,80 m) kam ins Junior-Varsity-Team. Dort spielte er viel und machte mehr als ein Spiel mit über 40 Punkten.",
+  "ice": "Die Story, dass Jordan aus der Schulmannschaft geflogen ist, stimmt so nicht: Er kam nur ins zweite Team.",
+  "src": [
+   "Wikipedia: Leroy Smith (Basketball)",
+   "https://en.wikipedia.org/wiki/Leroy_Smith_(basketball)"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Jordan",
+     "v": 180,
+     "text": "ca. 1,80 m"
+    },
+    {
+     "label": "Leroy Smith",
+     "v": 201,
+     "text": "2,01 m",
+     "hl": true
+    }
+   ],
+   "cap": "ein freier Platz im Varsity-Team"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-103",
+  "topic": "Basketball",
+  "hook": "Die Boston Celtics waren nie Meister, bevor Bill Russell kam.",
+  "body": "Als Russell 1956 zu den Celtics kam, hatte das Team noch nie einen Titel gewonnen. In seinen 13 Jahren dort holte es 11 Meisterschaften, die letzten zwei sogar mit ihm als Spieler und Trainer in einer Person. Er war außerdem der erste schwarze Cheftrainer der NBA.",
+  "ice": "Die Celtics hatten vor Bill Russell keinen Titel, mit ihm 11 in 13 Jahren.",
+  "src": [
+   "NBA.com: Bill Russell ist tot",
+   "https://www.nba.com/news/celtics-legend-11-time-nba-champion-bill-russell-dies-at-88"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Vor Russell",
+     "v": 0,
+     "text": "0 Titel"
+    },
+    {
+     "label": "Mit Russell",
+     "v": 11,
+     "text": "11 Titel",
+     "hl": true
+    }
+   ],
+   "cap": "Boston Celtics, 1956–1969"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-104",
+  "topic": "Basketball",
+  "hook": "Die 24 Sekunden der Wurfuhr sind einfach eine Divisionsaufgabe.",
+  "body": "Danny Biasone, Besitzer der Syracuse Nationals, teilte die 2.880 Sekunden eines Spiels durch 120 Würfe, die ein flottes Spiel brauchte. Heraus kam 24. Die Wurfuhr startete 1954 und der Schnitt der Liga sprang von 79,5 auf 93,1 Punkte pro Spiel.",
+  "ice": "Die 24 Sekunden der NBA-Wurfuhr kommen aus einer Rechnung: 2.880 Sekunden geteilt durch 120 Würfe.",
+  "src": [
+   "Bandera Inquirer: Die 24-Sekunden-Wurfuhr",
+   "https://bandera.inquirer.net/134979/the-24-second-shot-clock"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "24",
+   "unit": "Sek.",
+   "cap": "2.880 s ÷ 120 Würfe",
+   "sub": "Danny Biasone · 1954"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-105",
+  "topic": "Basketball",
+  "hook": "Das NBA-Spiel mit den wenigsten Punkten aller Zeiten endete 19:18.",
+  "body": "Am 22. November 1950 hatten die Fort Wayne Pistons keine Chance gegen Superstar George Mikan und seine Lakers. Also hielten sie den Ball fast das ganze Spiel lang und spielten auf Zeit. Im Schlussviertel fiel nur ein einziger Punkt. Die Pistons gewannen 19:18, das Publikum pfiff sie aus.",
+  "ice": "Ein NBA-Spiel endete mal 19:18, weil ein Team den Ball einfach nicht mehr hergab.",
+  "src": [
+   "ESPN Classic: Stall-Taktik, Pistons gewinnen 19:18",
+   "https://www.espn.com/classic/s/moment001122stall.html"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "19:18",
+   "unit": "",
+   "cap": "Pistons – Lakers · 22. Nov. 1950",
+   "sub": "37 Punkte, NBA-Tiefstwert"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-106",
+  "topic": "Basketball",
+  "hook": "Der größte und der kleinste NBA-Spieler waren einmal Teamkollegen.",
+  "body": "1987/88 spielten bei den Washington Bullets Manute Bol (2,31 m) und Muggsy Bogues (1,60 m). Zusammen standen sie sogar auf drei Magazincovern. Zwischen ihnen lagen 71 Zentimeter.",
+  "ice": "Der größte und der kleinste NBA-Profi spielten mal im selben Team.",
+  "src": [
+   "Wikipedia: Muggsy Bogues",
+   "https://wikipedia.com/wiki/Muggsy_Bogues"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Manute Bol",
+     "v": 231,
+     "text": "2,31 m"
+    },
+    {
+     "label": "Muggsy Bogues",
+     "v": 160,
+     "text": "1,60 m",
+     "hl": true
+    }
+   ],
+   "cap": "Washington Bullets, 1987/88"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-107",
+  "topic": "Basketball",
+  "hook": "Manute Bol blockte in seiner Karriere mehr Würfe, als er Punkte machte.",
+  "body": "Der 2,31 Meter große Sudanese war Spezialist im Verteidigen. Schon als Rookie blockte er 397 Würfe, in einem Spiel gegen Atlanta sogar 15. Am Ende seiner Karriere war er nach Quelle der einzige Veteran der NBA mit mehr Blocks als Punkten.",
+  "ice": "Manute Bol hat mehr Würfe geblockt als Punkte erzielt.",
+  "src": [
+   "Sports History Weekly: Bol und Bogues",
+   "https://www.sportshistoryweekly.com/stories/bol-bogues-an-nba-experiment,52?"
+  ],
+  "art": {
+   "t": "icon",
+   "icon": "hand",
+   "label": "Blocks > Punkte",
+   "sub": "Rookie-Rekord: 397 Blocks"
+  },
+  "v": 2
+ },
+ {
+  "id": "bball-108",
+  "topic": "Basketball",
+  "hook": "Das erste Basketballspiel der Welt endete 1:0.",
+  "body": "Am 21. Dezember 1891 ließ James Naismith 18 Studenten mit einem Fußball auf zwei Pfirsichkörbe spielen, die in drei Metern Höhe hingen. Am Ende fiel nur ein einziger Korb, ein Weitwurf von William Chase. Nach jedem Treffer holte ein Mann mit einer Leiter den Ball aus dem Korb.",
+  "ice": "Das erste Basketballspiel endete 1:0 und der Ball war ein Fußball.",
+  "src": [
+   "History.com: Das erste Basketballspiel",
+   "https://www.history.com/this-day-in-history/december-21/basketball-invention-james-naismith"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "1:0",
+   "unit": "",
+   "cap": "erstes Basketballspiel · 21. Dez. 1891",
+   "sub": "Fußball + Pfirsichkorb"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-101",
+  "topic": "Geld",
+  "hook": "Der Erfinder des europäischen Papiergelds wurde verurteilt, weil seine Bank zu viel davon druckte.",
+  "body": "Der Bankier Johan Palmstruch gab 1661 in Schweden die ersten echten Banknoten Europas aus. Sie waren ein Erfolg, bis seine Bank zu viele davon in Umlauf brachte. Die Leute verloren das Vertrauen, die Bank brach zusammen, und 1668 verurteilte ihn ein Gericht wegen Misswirtschaft.",
+  "ice": "Der Mann, der in Europa das Papiergeld erfunden hat, wurde wegen der Pleite seiner Bank verurteilt.",
+  "src": [
+   "Riksbank: Stockholms Banco",
+   "https://archive.riksbank.se/en/The-Riksbank/History/Money-and-power-the-history-of-Sveriges-Riksbank/Stockholms-Banco/index.html"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1656,
+     "label": "Bank gegründet"
+    },
+    {
+     "y": 1661,
+     "label": "erste Banknoten"
+    },
+    {
+     "y": 1668,
+     "label": "Urteil"
+    }
+   ],
+   "cap": "Stockholms Banco · Johan Palmstruch"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-102",
+  "topic": "Geld",
+  "hook": "Ein 100-Billionen-Dollar-Schein aus Simbabwe ist heute mehr wert als damals.",
+  "body": "2009 gab die Zentralbank Simbabwes eine Note über 100 Billionen Simbabwe-Dollar aus. Wegen der Hyperinflation war sie nur ungefähr 30 US-Dollar wert. Als die Bank die alten Scheine 2015 zurückkaufte, bot sie 40 US-Cent. Sammler zahlen deutlich mehr.",
+  "ice": "Der Schein über 100 Billionen Dollar war damals fast wertlos und ist heute ein teures Sammlerstück.",
+  "src": [
+   "Silicon Canals: Simbabwes 100-Billionen-Schein",
+   "https://siliconcanals.com/m-at-the-peak-of-zimbabwes-2008-meltdown-prices-doubled-roughly-every-day-the-central-bank-answered-by-printing-a-hundred-trillion-dollar-note-worth-only-about-us30-when-it-appeared/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "100 Bio.",
+   "unit": "Z$",
+   "cap": "ein Schein, 2009 nur ca. 30 US-$ wert",
+   "sub": "2015: Rückkauf für 40 US-Cent"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-103",
+  "topic": "Geld",
+  "hook": "Auf der Insel Yap blieb ein Steingeld-Brocken Zahlungsmittel, obwohl er im Meer versunken war.",
+  "body": "Die Bewohner von Yap nutzten riesige Steinscheiben als Geld. Weil man die Besitzer im Dorf kannte, mussten die Steine nie bewegt werden. Als ein Stein beim Transport ins Meer fiel, einigten sich alle: Er zählt weiter, und er wechselte sogar auf dem Meeresgrund noch den Besitzer.",
+  "ice": "Auf Yap war ein Stein, der im Meer versunken ist, weiter echtes Geld.",
+  "src": [
+   "NPR Planet Money: Die Insel des Steingelds",
+   "https://www.npr.org/sections/money/2011/02/15/131934618/The-island-of-stone-money"
+  ],
+  "art": {
+   "t": "icon",
+   "icon": "coin",
+   "label": "Stein auf dem Meeresgrund",
+   "sub": "zählte weiter als Geld · Yap"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-104",
+  "topic": "Geld",
+  "hook": "Ein König soll 1324 mit einer Pilgerreise den Goldpreis in Ägypten abgestürzt haben.",
+  "body": "Mansa Musa, Herrscher des Mali-Reichs, reiste 1324 mit riesigem Gefolge nach Mekka. In Kairo soll er so viel Gold ausgegeben haben, dass der Wert des Goldes um 20 Prozent fiel. Wie reich er wirklich war, weiß niemand sicher, aber die Geschichte machte ihn berühmt.",
+  "ice": "Mansa Musa soll in Kairo so viel Gold ausgegeben haben, dass das Gold plötzlich billiger war.",
+  "src": [
+   "World History Encyclopedia: Mansa Musa I",
+   "https://www.worldhistory.org/Mansa_Musa_I/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "−20 %",
+   "unit": "",
+   "cap": "Goldwert in Kairo, 1324 (überliefert)",
+   "sub": "Mansa Musa, Mali-Reich"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-101",
+  "topic": "Invest",
+  "hook": "Warren Buffett verkaufte seine erste Aktie mit 11 – kurz bevor sie auf das Fünffache stieg.",
+  "body": "Mit 11 Jahren kaufte Buffett Aktien von Cities Service zu 38 Dollar. Als der Kurs auf 40 Dollar zurückkam, verkaufte er. Danach stieg die Aktie auf über 200 Dollar. Er sagt, die Lehre daraus sei Geduld.",
+  "ice": "Buffetts erste Aktie: bei 40 Dollar verkauft, danach stieg sie auf über 200.",
+  "src": [
+   "TIME: Warren Buffett",
+   "https://time.com/3935235/warren-buffett"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Verkauf",
+     "v": 40,
+     "text": "40 $"
+    },
+    {
+     "label": "Danach",
+     "v": 202,
+     "text": "über 200 $",
+     "hl": true
+    }
+   ],
+   "cap": "Cities Service · Buffetts erste Aktie"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-102",
+  "topic": "Invest",
+  "hook": "Die erste echte Bitcoin-Zahlung waren zwei Pizzen für 10.000 Bitcoin.",
+  "body": "Am 22. Mai 2010 bezahlte der Programmierer Laszlo Hanyecz zwei Papa-John’s-Pizzen mit 10.000 Bitcoin. Damals waren die etwa 41 Dollar wert. Er hatte so viele Bitcoin, dass er sie nicht ernst nahm: Er schürfte sie selbst und wiederholte den Pizza-Trick sogar.",
+  "ice": "Die erste Bitcoin-Zahlung der Welt: 10.000 Bitcoin für zwei Pizzen.",
+  "src": [
+   "Fortune: Pizza-Tag und Laszlo Hanyecz",
+   "https://fortune.com/article/pizza-bitcoin-day-story-laszlo-hanyecz-papa-johns-pizzas-value/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "10.000",
+   "unit": "BTC",
+   "cap": "für zwei Pizzen · 22. Mai 2010",
+   "sub": "damals ca. 41 US-Dollar"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-103",
+  "topic": "Invest",
+  "hook": "Die berühmte Tulpenblase war wohl deutlich kleiner als ihr Ruf.",
+  "body": "Die Geschichte vom Tulpenwahn in den Niederlanden 1637 stammt aus einem Buch von 1841, das sich auf Spottlieder und Pamphlete stützt. Die Historikerin Anne Goldgar fand in den Archiven nur einen kleinen, kurzen Markt für Luxusblumen. Die teuerste Quittung lautete auf 5.000 Gulden, den Preis eines schönen Hauses, ein Ausreißer.",
+  "ice": "Der Tulpenwahn von 1637 war in Wahrheit klein, die Legende ist größer als das Ereignis.",
+  "src": [
+   "History.com: Die wahre Geschichte der Tulpenmanie",
+   "https://www.history.com/news/tulip-mania-financial-crash-holland"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "5.000",
+   "unit": "Gulden",
+   "cap": "teuerste belegte Tulpenquittung, 1637",
+   "sub": "Ausreißer, kein Massenwahn"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-104",
+  "topic": "Invest",
+  "hook": "Eine Anleihe von 1624 zahlt bis heute Zinsen.",
+  "body": "Eine niederländische Deichbehörde verkaufte 1624 eine Anleihe über 1.200 Gulden und versprach 2,5 Prozent Zinsen auf ewig. Sie läuft ohne Enddatum. 2024, zum 400. Geburtstag, kassierte der aktuelle Besitzer, die New Yorker Börse, wieder seine Zinsen.",
+  "ice": "Eine Anleihe von 1624 zahlt bis heute Zinsen und hat kein Ablaufdatum.",
+  "src": [
+   "NPR: Die 400 Jahre alte Anleihe zahlt noch",
+   "https://www.npr.org/transcripts/nx-s1-4738362"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "400",
+   "unit": "Jahre",
+   "cap": "Zinsen seit 1624 · 2,5 % für immer",
+   "sub": "niederländische Deichbehörde"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-105",
+  "topic": "Geld",
+  "hook": "Ein 1-Cent-Stück zu prägen kostete die USA zuletzt mehr als das Dreifache.",
+  "body": "Laut US Mint kostete ein Penny 2024 rund 3,7 Cent in der Herstellung. Seit 2006 lag er über dem Nennwert. Am 12. November 2025 prägte die Münzstätte Philadelphia den letzten Penny für den Umlauf, nach 232 Jahren. Die vorhandenen Pennys bleiben gültig.",
+  "ice": "Jeder US-Penny kostete mehr als drei Cent in der Herstellung, jetzt wird er nicht mehr geprägt.",
+  "src": [
+   "US Mint: letzter Penny",
+   "https://www.usmint.gov/news/press-releases/united-states-mint-hosts-historic-ceremonial-strike-for-final-production-of-the-circulating-one-cent-coin"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "3,7",
+   "unit": "Cent",
+   "cap": "Herstellungskosten eines 1-Cent-Stücks, 2024",
+   "sub": "Produktion Nov. 2025 beendet"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-106",
+  "topic": "Geld",
+  "hook": "Die erste Kreditkarte entstand laut Firmengeschichte, weil jemand seinen Geldbeutel vergaß.",
+  "body": "1949 konnte der Geschäftsmann Frank McNamara in einem New Yorker Restaurant nicht zahlen, weil er sein Geld im anderen Anzug gelassen hatte. Seine Frau rettete ihn. Im Februar 1950 zahlte er im selben Lokal mit einer Pappkarte: der ersten Diners-Club-Karte. Die Geschichte stammt von der Firma selbst, Zweifler gibt es.",
+  "ice": "Der Erfinder der Kreditkarte hatte angeblich sein Geld vergessen und seine Frau musste zahlen.",
+  "src": [
+   "Diners Club: Geschichte",
+   "https://dinersclub.com/about-us/history"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1949,
+     "label": "Geld vergessen"
+    },
+    {
+     "y": 1950,
+     "label": "Pappkarte zahlt"
+    }
+   ],
+   "cap": "Diners Club · laut Firmengeschichte"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-107",
+  "topic": "Geld",
+  "hook": "Der größte je gedruckte US-Geldschein ist zwar gültig, aber für dich zu besitzen illegal.",
+  "body": "1934 und 1935 druckte die US-Regierung Scheine über 100.000 Dollar mit Präsident Wilson. Sie dienten nur zwischen den Zentralbanken als Buchungshilfe und kamen nie unter die Leute. Laut Smithsonian ist es Privatpersonen verboten, einen zu besitzen.",
+  "ice": "Es gibt einen 100.000-Dollar-Schein, aber niemand darf ihn privat besitzen.",
+  "src": [
+   "Smithsonian: 100.000-Dollar-Note",
+   "https://si.edu/object/100000-dollars-gold-certificate-united-states-1934:nmah_742353"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "100.000",
+   "unit": "$",
+   "cap": "höchster je ausgegebener US-Schein, 1934",
+   "sub": "nie im Umlauf, Privatbesitz illegal"
+  },
+  "v": 2
+ },
+ {
+  "id": "geld-108",
+  "topic": "Geld",
+  "hook": "Eine Goldmünze blieb über 500 Jahre exakt gleich.",
+  "body": "Venedig prägte seit 1284 den Dukaten, Gewicht und Goldgehalt änderten sich bis zum Ende der Republik 1797 praktisch nicht. Dank dieser Verlässlichkeit akzeptierten Händler ihn in ganz Europa. Das Wort Zechine für Goldmünze stammt daher.",
+  "ice": "Venedig hat 500 Jahre lang dieselbe Goldmünze geprägt, ohne je Gold einzusparen.",
+  "src": [
+   "Bundesbank: Der Dukaten von Venedig",
+   "https://www.bundesbank.de/en/bundesbank/numismatics/selected-objects/let-this-be-given-to-you-o-christ-616358"
+  ],
+  "art": {
+   "t": "timeline",
+   "items": [
+    {
+     "y": 1284,
+     "label": "erster Dukaten"
+    },
+    {
+     "y": 1797,
+     "label": "Ende Venedigs"
+    }
+   ],
+   "cap": "gleiches Gewicht, gleiches Gold"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-105",
+  "topic": "Invest",
+  "hook": "Von den 12 Firmen des ersten Dow Jones war 122 Jahre später nur noch eine dabei, und dann flog auch die raus.",
+  "body": "1896 stellte Charles Dow seinen Index aus 12 Industriefirmen zusammen, darunter Zucker, Leder und Gaslicht. General Electric war als einzige bis 2018 dabei, mit zwei kurzen Pausen. Dann ersetzte Walgreens sie. Die Wirtschaft ändert sich schneller als jede Aktie.",
+  "ice": "Von den 12 Gründerfirmen des Dow Jones gibt es heute keine mehr im Index.",
+  "src": [
+   "Fortune: GE verlässt den Dow",
+   "https://fortune.com/2018/06/19/ge-last-original-dow-industrial-stock-out-walgreens-in/"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "1 von 12",
+   "unit": "",
+   "cap": "Gründungsfirmen des Dow noch dabei, bis 2018",
+   "sub": "General Electric, dann Walgreens"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-106",
+  "topic": "Invest",
+  "hook": "Der erste Indexfonds wurde als „Bogles Dummheit“ verspottet.",
+  "body": "Jack Bogle wollte 1976 mit seinem Indexfonds 150 Millionen Dollar einsammeln, bekam aber nur 11,3 Millionen. Die Branche nannte die Idee „Bogle’s folly“ und unamerikanisch, weil der Fonds den Markt nur abbilden statt schlagen wollte. Heute verwalten Indexfonds Billionen.",
+  "ice": "Die Idee, einfach den ganzen Markt zu kaufen, wurde zuerst ausgelacht.",
+  "src": [
+   "Morningstar: Der Indexfonds wird 50",
+   "https://www.morningstar.com/funds/index-fund-turns-50-how-jack-bogle-changed-investing-forever"
+  ],
+  "art": {
+   "t": "bars",
+   "rows": [
+    {
+     "label": "Ziel",
+     "v": 150,
+     "text": "150 Mio. $"
+    },
+    {
+     "label": "Erreicht",
+     "v": 11.3,
+     "text": "11,3 Mio. $",
+     "hl": true
+    }
+   ],
+   "cap": "Start des ersten Indexfonds, 1976"
+  },
+  "v": 2
+ },
+ {
+  "id": "inv-107",
+  "topic": "Invest",
+  "hook": "Benjamin Franklin ließ sein Erbe 200 Jahre lang wachsen, bis keiner der Beteiligten mehr lebte.",
+  "body": "Franklin vermachte Boston und Philadelphia 1790 je 1.000 Pfund, laut Britannica insgesamt 2.000. Das Geld durfte erst nach 200 Jahren voll verwendet werden. 1990 war daraus laut Britannica rund 6,5 Millionen Dollar geworden, weniger als er selbst gerechnet hatte.",
+  "ice": "Franklin hat 1790 Geld für die Städte angelegt, das erst 200 Jahre später ausgezahlt werden durfte.",
+  "src": [
+   "Britannica: Franklins Sparkonto",
+   "https://britannica.com/one-good-fact/which-cities-did-ben-franklin-start-a-savings-account-for"
+  ],
+  "art": {
+   "t": "bignum",
+   "big": "6,5 Mio.",
+   "unit": "$",
+   "cap": "aus Franklins Vermächtnis nach 200 Jahren, 1990",
+   "sub": "Boston und Philadelphia"
+  },
+  "v": 2
+ }
+];
+FACTS.push(...NEW_FACTS);
 const byId = Object.fromEntries(FACTS.map(f=>[f.id,f]));
 
 /* ---------- Storage: everything stays in this browser on the phone ---------- */
 const LKEY="funke.votes.v1";
 let votes = {};
 try{ votes = JSON.parse(localStorage.getItem(LKEY)||"{}")||{}; }catch(e){ votes={}; }
+document.getElementById('ver').textContent=APP_VERSION;
 const syncEl=document.getElementById('sync'), syncText=document.getElementById('syncText');
 function setSync(state){ syncEl.dataset.state=state; syncText.textContent = state==='cloud'?'Dauerhaft gespeichert':'Auf diesem Gerät gespeichert'; }
 function persist(id){
@@ -445,7 +1913,7 @@ function persist(id){
 /* Export for Claude: a compact text you paste into the chat */
 function exportText(){
   const rows=FACTS.filter(f=>votes[f.id]).map(f=>({id:f.id,topic:f.topic,vote:votes[f.id].vote||null,saved:!!votes[f.id].saved,hook:f.hook}));
-  return JSON.stringify({app:"mimir",exportedAt:new Date().toISOString(),count:rows.length,votes:rows},null,1);
+  return JSON.stringify({app:"mimir",version:APP_VERSION,exportedAt:new Date().toISOString(),count:rows.length,votes:rows},null,1);
 }
 async function copyExport(){
   const txt=exportText();
@@ -458,7 +1926,9 @@ let deck=[], started=false, view='feed';
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function buildDeck(all){
   const ids=FACTS.map(f=>f.id).filter(id=>all || !(votes[id]&&votes[id].vote));
-  deck=shuffle(ids);
+  /* Neue, noch nicht bewertete Fakten (v2) kommen zuerst, danach der Rest. */
+  const isNew=id=>(byId[id].v||1)>=2 && !(votes[id]&&votes[id].vote);
+  deck=shuffle(ids.filter(isNew)).concat(shuffle(ids.filter(id=>!isNew(id))));
 }
 
 const feed=document.getElementById('view-feed');
@@ -473,7 +1943,7 @@ function cardEl(f,under){
   el.innerHTML=`
     <div class="stamp like">GUT</div><div class="stamp nope">NÖ</div>
     <div class="savedmark" aria-hidden="true">${starIcon}</div>
-    <div class="visual">${ART[f.art]()}</div>
+    <div class="visual">${artSvg(f)}</div>
     <div class="content">
       <span class="chip">${esc(f.topic)}</span>
       <h2 class="hook">${esc(f.hook)}</h2>
