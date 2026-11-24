@@ -1,7 +1,8 @@
 # Mimir
 
-Überraschende Fakten statt Doomscrolling. Mimir zeigt Fakten als Karten zum Wischen:
-rechts = gefällt, links = gefällt nicht, Stern = als Icebreaker merken.
+Überraschende Fakten statt Doomscrolling. Mimir funktioniert wie Reels, nur mit Fakten:
+nach oben wischen = nächster Fakt, rechts = gefällt, links = gefällt nicht,
+Stern = als Icebreaker merken, auf die Karte tippen = ganzen Text lesen.
 
 **App öffnen:** https://semihpusuc.github.io/mimir/
 
@@ -27,5 +28,6 @@ sonst zeigt das Handy noch eine Weile die alte, gespeicherte Version.
 ## Daten
 
 Bewertungen und gemerkte Fakten bleiben nur auf dem Handy (im Browser-Speicher).
-Für neue, passendere Fakten: im Tab „Gemerkt“ auf „Bewertungen kopieren“ tippen
+Die App zählt außerdem mit, wie lange ein Fakt auf dem Bildschirm war und ob der ganze Text
+geöffnet wurde. Für neue, passendere Fakten: im Tab „Gemerkt“ auf „Bewertungen kopieren“ tippen
 und den Text im Chat mit Claude einfügen.

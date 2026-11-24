@@ -6,7 +6,7 @@
   Wichtig: Bei jeder neuen Version die Nummer in CACHE erhöhen (v1 -> v2 ...).
   Dann lädt der Browser die neuen Dateien und räumt die alten weg.
 */
-const CACHE = "mimir-v2";
+const CACHE = "mimir-v3";
 const FILES = [
   "./",
   "./index.html",
