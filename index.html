@@ -84,12 +84,35 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:3px;b
 .src{font-size:12.5px;color:var(--muted)} .src a{color:var(--muted)}
 .close{align-self:flex-start;font-size:13px;font-weight:600;color:var(--muted);padding:6px 0}
 
-/* First-run hint */
-.hint{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%);z-index:15;padding:10px 16px;border-radius:999px;
-  background:rgba(23,26,38,.92);border:1px solid var(--line);font-size:13.5px;font-weight:500;white-space:nowrap;transition:opacity .4s;pointer-events:none}
-.hint b{display:inline-block;animation:nudge 1.3s ease-in-out infinite}
-@keyframes nudge{50%{transform:translateY(-5px)}}
-.hint.gone{opacity:0}
+/* First-run intro */
+.intro{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);
+  background:rgba(7,8,13,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:fadein .3s ease}
+.intro[hidden]{display:none}
+@keyframes fadein{from{opacity:0}}
+.intro-card{width:100%;max-width:420px;border-radius:24px;padding:22px 20px 20px;background:rgba(15,17,24,.97);border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:16px;animation:rise .4s cubic-bezier(.2,.9,.25,1)}
+@keyframes rise{from{transform:translateY(30px);opacity:0}}
+.intro-card h2{margin:0;font-family:var(--display);font-size:22px;letter-spacing:-.01em}
+.intro-card ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.intro-card li{display:flex;gap:14px;align-items:center}
+.intro-card .ico{flex:0 0 46px;height:46px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.intro-card .ico svg{width:24px;height:24px}
+.intro-card li b{display:block;font-size:15px;font-weight:600;margin-bottom:2px}
+.intro-card li span{display:block;font-size:13.5px;line-height:1.4;color:var(--muted)}
+.intro-card .pill-btn{align-self:stretch;text-align:center;margin-top:4px}
+.ico.up svg{animation:ico-up 1.4s ease-in-out infinite}
+@keyframes ico-up{50%{transform:translateY(-4px)}}
+.ico.lr svg{animation:ico-lr 1.6s ease-in-out infinite}
+@keyframes ico-lr{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+/* Demo after the intro: card peeks right and left, star pulses */
+.inner.peek{animation:peek 2.2s cubic-bezier(.4,0,.2,1)}
+@keyframes peek{0%,100%{transform:none}20%,30%{transform:translateX(70px) rotate(3deg)}55%,65%{transform:translateX(-70px) rotate(-3deg)}85%{transform:none}}
+.inner.peek .stamp.like{animation:st-like 2.2s}
+.inner.peek .stamp.nope{animation:st-nope 2.2s}
+@keyframes st-like{0%,12%{opacity:0}20%,30%{opacity:.9}40%,100%{opacity:0}}
+@keyframes st-nope{0%,47%{opacity:0}55%,65%{opacity:.9}75%,100%{opacity:0}}
+.act.star.pulse-star i{animation:starpulse 1s ease-in-out 3}
+@keyframes starpulse{50%{box-shadow:0 0 0 8px rgba(255,209,102,.25);color:var(--star);border-color:var(--star)}}
+.again{align-self:center;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:6px}
 
 /* "Gemerkt" panel */
 .panel{position:fixed;inset:0;z-index:18;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top) + 72px) 16px calc(env(safe-area-inset-bottom) + 24px);display:none;flex-direction:column;gap:12px}
@@ -134,7 +157,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:3px;b
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media (prefers-reduced-motion:reduce){
-  .inner,.sheet{transition:none}.hint b,.blink,.pulse,.seat,.orbit{animation:none}
+  .inner,.sheet{transition:none}.ico svg,.inner.peek,.inner.peek .stamp,.act.star.pulse-star i,.blink,.pulse,.seat,.orbit{animation:none}
 }
 </style>
 </head>
@@ -148,7 +171,22 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:3px;b
 </header>
 
 <main class="feed" id="feed" aria-label="Fakten-Feed"></main>
-<div class="hint gone" id="hint" aria-hidden="true"><b>↑</b> weiter · ← Nö · Gut → · Tippen = mehr</div>
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle" hidden>
+  <div class="intro-card">
+    <h2 id="introTitle">So funktioniert Mimir</h2>
+    <ul>
+      <li><span class="ico up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
+        <div><b>Nach oben wischen</b><span>Nächster Fakt, so lange du willst.</span></div></li>
+      <li><span class="ico lr"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7l-5 5 5 5M4 12h6" stroke="#ff5c6c"/><path d="M15 7l5 5-5 5M20 12h-6" stroke="#4ade80"/></svg></span>
+        <div><b>Seitwärts wischen</b><span>Rechts = gefällt, links = eher nicht. So lernt Mimir, was dich interessiert.</span></div></li>
+      <li><span class="ico"><svg viewBox="0 0 24 24" fill="#ffd166"><path d="m12 2.5 2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z"/></svg></span>
+        <div><b>Stern rechts unten</b><span>Merkt einen Fakt als Icebreaker. Alle findest du oben unter „Gemerkt“.</span></div></li>
+      <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><circle cx="12" cy="12" r="8" opacity=".45"/></svg></span>
+        <div><b>Auf die Karte tippen</b><span>Zeigt den ganzen Text und den Satz zum Erzählen.</span></div></li>
+    </ul>
+    <button class="pill-btn" id="introGo">Los geht’s</button>
+  </div>
+</div>
 
 <section class="panel" id="panel" aria-label="Gemerkte Fakten"></section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -477,7 +515,7 @@ const FACTS = [
   src:["Wikipedia: Buttonwood Agreement","https://en.wikipedia.org/wiki/Buttonwood_Agreement"]}
 ];
 /* ---------- Faktenpaket v2: neue Fakten, Grafiken per Vorlage ---------- */
-const APP_VERSION = "v3.1";
+const APP_VERSION = "v3.2";
 const NEW_FACTS = [
  {
   "id": "tech-101",
@@ -1950,7 +1988,7 @@ function leave(){ if(current){ const r=rec(current.dataset.id); r.ms=(r.ms||0)+(
 function enter(el){ leave(); current=el; since=performance.now(); const r=rec(el.dataset.id); r.views=(r.views||0)+1; persist(); }
 const io=new IntersectionObserver(entries=>{
   entries.forEach(e=>{
-    if(e.isIntersecting && e.intersectionRatio>=.6 && current!==e.target && !panelOpen){
+    if(e.isIntersecting && e.intersectionRatio>=.6 && current!==e.target && !panelOpen && !introOpen){
       enter(e.target);
       const slides=feed.children, i=Array.prototype.indexOf.call(slides,current);
       if(i>slides.length-4) appendRound();
@@ -2026,9 +2064,23 @@ function wire(s,f){
 }
 
 /* ---------- Hinweis beim ersten Start ---------- */
-const hint=document.getElementById('hint');
-function hideHint(){ hint.classList.add('gone'); try{ localStorage.setItem('mimir.hint.v3','1'); }catch(e){} }
-try{ if(!localStorage.getItem('mimir.hint.v3')) hint.classList.remove('gone'); }catch(e){}
+/* Einweisung beim ersten Start: Karte mit den Gesten, danach eine kurze Vorführung am echten Fakt */
+const intro=document.getElementById('intro');
+let introOpen=false;
+function showIntro(){ leave(); introOpen=true; intro.hidden=false; document.getElementById('introGo').focus(); }
+function closeIntro(){
+  intro.hidden=true; introOpen=false;
+  try{ localStorage.setItem('mimir.intro.v1','1'); }catch(e){}
+  const s=visibleSlide(); if(!s) return;
+  enter(s);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const inner=s.querySelector('.inner'), star=s.querySelector('.act.star');
+  setTimeout(()=>inner.classList.add('peek'),350);
+  setTimeout(()=>{ inner.classList.remove('peek'); star.classList.add('pulse-star'); },2650);
+  setTimeout(()=>star.classList.remove('pulse-star'),5800);
+}
+document.getElementById('introGo').onclick=closeIntro;
+function hideHint(){}
 
 /* ---------- Gemerkt ---------- */
 const panel=document.getElementById('panel');
@@ -2054,8 +2106,10 @@ function renderSaved(){
         </div>
         <button class="unsave" data-id="${f.id}" aria-label="Nicht mehr merken">${ICON.star}</button></article>`).join('')+`</div>`
       : `<p class="empty">Noch nichts gemerkt. Tippe beim Entdecken auf den Stern, um einen Fakt als Icebreaker zu sammeln.</p>`}
+    <button class="again" id="introAgain">Anleitung nochmal zeigen</button>
     <p class="foot">Mimir ${APP_VERSION} · ${FACTS.length} Fakten · ${persistent?'dauerhaft':'auf diesem Gerät'} gespeichert</p>`;
   document.getElementById('btnExport').onclick=copyExport;
+  document.getElementById('introAgain').onclick=()=>{ show('feed'); setTimeout(showIntro,200); };
   panel.querySelectorAll('.item-head').forEach(h=>h.onclick=()=>{ const it=h.parentElement, o=!it.classList.contains('open'); it.classList.toggle('open',o); h.setAttribute('aria-expanded',o); });
   panel.querySelectorAll('.unsave').forEach(b=>b.onclick=()=>{
     const id=b.dataset.id; rec(id).saved=false; persist(); renderSaved(); renderSavedCount();
@@ -2077,7 +2131,7 @@ let toastT; function toast(msg){ const t=document.getElementById('toast'); t.tex
 
 /* Tastatur (zum Testen am Computer): Pfeil rechts/links bewerten, Pfeil runter weiter, S merken */
 document.addEventListener('keydown',e=>{
-  if(panelOpen||!current) return;
+  if(panelOpen||introOpen||!current) return;
   const f=byId[current.dataset.id];
   if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ rec(f.id).vote=e.key==='ArrowRight'?'like':'nope'; persist(); next(current); }
   else if(e.key==='s') current.querySelector('.act.star').click();
@@ -2086,6 +2140,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- Start ---------- */
 renderSavedCount();
 appendRound();
+try{ if(!localStorage.getItem('mimir.intro.v1')) setTimeout(showIntro,600); }catch(e){}
 window.addEventListener('pagehide',()=>{ leave(); try{ localStorage.setItem(LKEY,JSON.stringify(votes)); }catch(e){} });
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
